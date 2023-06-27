@@ -4,8 +4,17 @@ export default {
   getUser() {
     return apiClient.get("users");
   },
+  getClerks(){
+    return apiClient.get("clerks");
+  },
+  getCourierBoys(){
+    return apiClient.get("courierboys");
+  },
   addUser(user) {
     return apiClient.post("users", user);
+  },
+  updateUser(user){
+    return apiClient.put("users/" + user.id, user);
   },
   loginUser(user) {
     console.log(user);
