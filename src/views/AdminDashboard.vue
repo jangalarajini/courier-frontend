@@ -147,6 +147,7 @@ const newUser = ref({
     firstName: "",
     lastName: "",
     email: "",
+    password: "",
     role: "",
 });
 
@@ -255,11 +256,11 @@ function openEditClerk(user) {
 
 function openEditUserRole(user) {
     newUser.value.id = user.id;
-    newUser.value.firstName = user.firstname;
-    newUser.value.lastName = user.lastName;
-    newUser.value.password = user.password;
+    newUser.value.firstName = user.firstName;
     newUser.value.email = user.email;
     newUser.value.role = user.role;
+    newUser.value.lastName = user.lastName;
+    newUser.value.password = user.password;
     isEditUser.value = true;
 }
 
@@ -271,30 +272,40 @@ function openEditCourierBoy(user) {
     isEditCourierBoy.value = true;
 }
 
-async function deleteUser(user) {
-
-    if (confirm("Are you sure you want to delete customer") === true) {
+async function deleteClerk(user) {
+        if (confirm("Are you sure you want to delete customer") === true) {
         try {
-            await UserServices.deleteUser(user.id);
+            await UserServices.deleteUser(user);
             snackbar.value.value = true;
             snackbar.value.color = "success";
-            snackbar.value.text = `${user.name} deleted successfully!`;
+            snackbar.value.text = `${user.lastName} deleted successfully!`;
         } catch (error) {
             console.log(error);
             snackbar.value.value = true;
             snackbar.value.color = "error";
             snackbar.value.text = error.response.data.message;
         }
+        
     }
-}
-
-async function deleteClerk(user) {
-    deleteUser(user)
     await getClerks();
 }
 
 async function deleteCourierBoys(user) {
-    deleteUser(user)
+    
+    if (confirm("Are you sure you want to delete customer") === true) {
+        try {
+            await UserServices.deleteUser(user);
+            snackbar.value.value = true;
+            snackbar.value.color = "success";
+            snackbar.value.text = `${user.lastName} deleted successfully!`;
+        } catch (error) {
+            console.log(error);
+            snackbar.value.value = true;
+            snackbar.value.color = "error";
+            snackbar.value.text = error.response.data.message;
+        }
+
+    }
     await getCourierBoys();
 }
 
@@ -305,9 +316,6 @@ function closeEditClerk() {
 function closeEditUserRole() {
     isEditUser.value = false;
 }
-
-
-
 function closeEditCourierBoy() {
     isEditCourierBoy.value = false;
 }
@@ -403,6 +411,7 @@ async function updateUserEditRole()
 {
     isEditUser.value = false;
     try {
+        newUser.value.password = "password";
         await UserServices.updateUser(newUser.value);
         snackbar.value.value = true;
         snackbar.value.color = "success";
