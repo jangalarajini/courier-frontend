@@ -16,6 +16,9 @@ export default {
   updateUser(user){
     return apiClient.put("users/" + user.id, user);
   },
+  deleteUser(user){
+    return apiClient.delete("users/"+ user.id,user);
+  },
   loginUser(user) {
     console.log(user);
     return apiClient.post("login", user.value, {
