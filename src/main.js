@@ -295,6 +295,7 @@ async function initializeApp() {
     }
   }
     window.localStorage.setItem("dataInserted", "true");
+    await wait(2000);
   }
     createApp(App).use(vuetify).use(router).mount("#app");
     
