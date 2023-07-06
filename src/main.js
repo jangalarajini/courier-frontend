@@ -20,6 +20,7 @@ function wait(ms) {
 
 async function initializeApp() {
   try {
+
     window.localStorage.clear();
     const isDataInserted = window.localStorage.getItem("dataInserted");
     if (!isDataInserted) {
@@ -205,7 +206,24 @@ async function initializeApp() {
       await NodeServices.addNode({ name: nodes[i] });
     }
 
-    addingEdges(edges);
+    for (let i = 0; i < edges.length; i++) {
+    const edge = edges[i];
+    const sourceNodeIdPromise = NodeServices.getIdFromName(edge.source);
+    const targetNodeIdPromise = NodeServices.getIdFromName(edge.target);
+    const cost = edge.cost;
+
+    const sourceNodeId = await sourceNodeIdPromise;
+    const targetNodeId = await targetNodeIdPromise;
+
+    const sourcenodeid = sourceNodeId;
+    const targetnodeid = targetNodeId;
+
+    await EdgeServices.addEdge({
+      sourcenodeid: sourcenodeid,
+      targetnodeid: targetnodeid,
+      cost: cost
+    });
+  }
 
     const nodeList = ref([]);
     async function getNodes() {
@@ -227,14 +245,13 @@ async function initializeApp() {
       }
     }
 
-    await getNodes();
     const graph = {};
-  
+    await getNodes();
+   
     nodeList.value.forEach((node) => {
       graph[node.name] = {};
     });
   
-    await wait(1000);
     await getEdges();
   
     edgeList.value.forEach((edge) => {
@@ -246,54 +263,13 @@ async function initializeApp() {
       }
     });
 
+    await wait(1000);
+
     const result = dijkstra(graph);
     const allDistances = result.allDistances;
     const allParents = result.allParents;
-    addPathsToDatabase(allDistances, allParents);
-    window.localStorage.setItem("dataInserted", "true");
-  }
-    createApp(App).use(vuetify).use(router).mount("#app");
-    
-  } catch (error) {
-    console.error("Error initializing app:", error);
-  }
-}
 
-
-function getPath(parents, destination) {
-  const path = [];
-  let currentVertex = destination;
-  while (currentVertex !== null) {
-    path.unshift(currentVertex);
-    currentVertex = parents[currentVertex];
-  }
-  return path.toString();
-}
-
-async function addingEdges(edges) {
-  for (let i = 0; i < edges.length; i++) {
-    const edge = edges[i];
-    const sourceNodeIdPromise = NodeServices.getIdFromName(edge.source);
-    const targetNodeIdPromise = NodeServices.getIdFromName(edge.target);
-    const cost = edge.cost;
-
-    const sourceNodeId = await sourceNodeIdPromise;
-    const targetNodeId = await targetNodeIdPromise;
-
-    const sourcenodeid = sourceNodeId;
-    const targetnodeid = targetNodeId;
-
-    await EdgeServices.addEdge({
-      sourcenodeid: sourcenodeid,
-      targetnodeid: targetnodeid,
-      cost: cost
-    });
-  }
-
-}
-
-async function addPathsToDatabase(allDistances, allParents) {
-  for (let sourceVertex in allDistances) {
+    for (let sourceVertex in allDistances) {
     const distances = allDistances[sourceVertex];
     const parents = allParents[sourceVertex];
     for (let vertex in distances) {
@@ -318,6 +294,24 @@ async function addPathsToDatabase(allDistances, allParents) {
       });
     }
   }
+    window.localStorage.setItem("dataInserted", "true");
+  }
+    createApp(App).use(vuetify).use(router).mount("#app");
+    
+  } catch (error) {
+    console.error("Error initializing app:", error);
+  }
+}
+
+
+function getPath(parents, destination) {
+  const path = [];
+  let currentVertex = destination;
+  while (currentVertex !== null) {
+    path.unshift(currentVertex);
+    currentVertex = parents[currentVertex];
+  }
+  return path.toString();
 }
 
 function dijkstra(graph) {
