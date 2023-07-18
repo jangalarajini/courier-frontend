@@ -4,23 +4,28 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 import UserServices from "../services/UserServices.js";
 import CustomerServices from "../services/CustomerServices.js";
+import NodeServices from "../services/NodeServices.js";
+import EdgeServices from "../services/EdgeServices.js";
 
 const router = useRouter();
 const user = ref(null);
 const title = ref("Courier Services");
 const drawer = ref(false);
+const companyId = 1;
 
 
 const showingUsers = ref(false);
 const showingCustomers = ref(false);
 const showingClerks = ref(false);
 const showingCouriers = ref(false);
+const showingMap = ref(false);
 
 async function showUsers() {
     showingUsers.value = true;
     showingCustomers.value = false;
     showingClerks.value = false;
     showingCouriers.value = false;
+    showingMap.value = false;
     await getUsers();
     drawer.value = false;
 }
@@ -30,6 +35,7 @@ async function showCustomers() {
     showingCustomers.value = true;
     showingClerks.value = false;
     showingCouriers.value = false;
+    showingMap.value = false;
     await getCustomers();
     drawer.value = false;
 }
@@ -39,17 +45,30 @@ async function showClerks() {
     showingCustomers.value = false;
     showingClerks.value = true;
     showingCouriers.value = false;
+    showingMap.value = false;
     await getClerks();
     drawer.value = false;
 
 }
 
-async function showCourierBoys() {
+async function showCouriers() {
+    showingUsers.value = false;
+    showingCustomers.value = false;
+    showingClerks.value = false;
+    showingCouriers.value = true;
+    showingMap.value = false;
+    await getCouriers();
+    drawer.value = false;
+}
+
+async function showMap(){
     showingUsers.value = false;
     showingCustomers.value = false;
     showingClerks.value = false;
     showingCouriers.value = false;
-    await getCourierBoys();
+    showingMap.value = true;
+    await getNodes();
+    await getEdges();
     drawer.value = false;
 }
 
@@ -62,6 +81,28 @@ const snackbar = ref({
 const userList = ref([]);
 const clerks = ref([]);
 const couriers = ref([]);
+const nodes = ref([]);
+const edges = ref([]);
+
+async function getNodes() {
+    NodeServices.getNodes()
+        .then((data) => {
+            nodes.value = data.data;
+        })
+        .catch((error) => {
+            console.log(error);
+        });
+}
+
+async function getEdges() {
+    EdgeServices.getEdges()
+        .then((data) => {
+            edges.value = data.data;
+        })
+        .catch((error) => {
+            console.log(error);
+        });
+}
 
 async function getUsers() {
     UserServices.getUser()
@@ -141,6 +182,8 @@ const newClerk = ref({
     lastName: "",
     email: "",
     role: "",
+    companyId: companyId,
+
 });
 
 const newUser = ref({
@@ -149,6 +192,7 @@ const newUser = ref({
     email: "",
     password: "",
     role: "",
+    companyId: companyId,
 });
 
 const newCourier = ref({
@@ -156,6 +200,7 @@ const newCourier = ref({
     lastName: "",
     email: "",
     role: "",
+    companyId: companyId,
 });
 
 async function addClerk() {
@@ -204,12 +249,12 @@ function closeAddClerk() {
     isAddClerk.value = false;
 }
 
-function openAddCourierBoy() {
-    isAddCourierBoy.value = true;
+function openAddCourier() {
+    isAddCourier.value = true;
 }
 
-function closeAddCourierBoy() {
-    isAddCourierBoy.value = false;
+function closeAddCourier() {
+    isAddCourier.value = false;
 }
 
 async function updateClerk() {
@@ -273,7 +318,7 @@ function openEditCourier(user) {
 }
 
 async function deleteClerk(user) {
-        if (confirm("Are you sure you want to delete customer") === true) {
+    if (confirm("Are you sure you want to delete customer") === true) {
         try {
             await UserServices.deleteUser(user);
             snackbar.value.value = true;
@@ -285,7 +330,7 @@ async function deleteClerk(user) {
             snackbar.value.color = "error";
             snackbar.value.text = error.response.data.message;
         }
-        
+
     }
     await getClerks();
 }
@@ -316,6 +361,7 @@ function closeEditClerk() {
 function closeEditUserRole() {
     isEditUser.value = false;
 }
+
 function closeEditCourier() {
     isEditCourier.value = false;
 }
@@ -324,10 +370,11 @@ const isAddCustomer = ref(false);
 const isEditCustomer = ref(false);
 
 const newCustomer = ref({
-    customerName: "",
-    customerNumber: "",
+    name: "",
+    number: "",
     location: "",
     deliveryInstructions: "",
+    companyId: companyId,
 });
 
 async function addCustomer() {
@@ -357,8 +404,8 @@ function closeAddCustomer() {
 
 function openEditCustomer(customer) {
     newCustomer.value.id = customer.id;
-    newCustomer.value.customerName = customer.customerName;
-    newCustomer.value.customerNumber = customer.customerNumber;
+    newCustomer.value.name = customer.name;
+    newCustomer.value.number = customer.number;
     newCustomer.value.deliveryInstructions = customer.deliveryInstructions;
     newCustomer.value.location = customer.location;
     isEditCustomer.value = true;
@@ -371,7 +418,7 @@ async function deleteCustomer(customer) {
             await CustomerServices.deleteCustomer(customer.id);
             snackbar.value.value = true;
             snackbar.value.color = "success";
-            snackbar.value.text = `${customer.customerName} deleted successfully!`;
+            snackbar.value.text = `${customer.name} deleted successfully!`;
         } catch (error) {
             console.log(error);
             snackbar.value.value = true;
@@ -388,7 +435,7 @@ async function updateCustomer() {
         await CustomerServices.updateCustomer(newCustomer.value);
         snackbar.value.value = true;
         snackbar.value.color = "success";
-        snackbar.value.text = `${newCustomer.value.customerName} updated successfully!`;
+        snackbar.value.text = `${newCustomer.value.name} updated successfully!`;
     } catch (error) {
         console.log(error);
         snackbar.value.value = true;
@@ -402,13 +449,11 @@ function closeEditCustomer() {
     isEditCustomer.value = false;
 }
 
-
 async function showProfile() {
     router.push({ name: "profile" });
 }
 
-async function updateUserEditRole()
-{
+async function updateUserEditRole() {
     isEditUser.value = false;
     try {
         newUser.value.password = "password";
@@ -445,6 +490,7 @@ function closeSnackBar() {
             <v-list-item prepend-icon="mdi-account-group" @click="showCustomers()" title="Customers"></v-list-item>
             <v-list-item prepend-icon="mdi-face-agent" @click="showClerks()" title="Clerks"></v-list-item>
             <v-list-item prepend-icon="mdi-bike" @click="showCouriers()" title="Couriers"></v-list-item>
+            <v-list-item prepend-icon="mdi-map" @click="showMap()" title="MapDetails"></v-list-item>
             <v-list-item style="color: red;" @click="logout()" prepend-icon="mdi-logout-variant"
                 title="Logout"></v-list-item>
         </v-list>
@@ -473,7 +519,7 @@ function closeSnackBar() {
                             </thead>
                             <tbody>
                                 <tr v-for="item in userList" :key="item.id">
-                                    <td>{{ item.lastName }} {{item.firstName }}</td>
+                                    <td>{{ item.lastName }} {{ item.firstName }}</td>
                                     <td>{{ item.email }}</td>
                                     <td>{{ item.role }}</td>
                                     <td>
@@ -513,7 +559,7 @@ function closeSnackBar() {
                             </thead>
                             <tbody>
                                 <tr v-for="item in clerks" :key="item.id">
-                                    <td>{{ item.lastName }}  {{item.firstName }}</td>
+                                    <td>{{ item.lastName }} {{ item.firstName }}</td>
                                     <td>{{ item.email }}</td>
                                     <td>
                                         <v-icon size="small" icon="mdi-pencil" @click="openEditClerk(item)"></v-icon>
@@ -555,7 +601,7 @@ function closeSnackBar() {
                             </thead>
                             <tbody>
                                 <tr v-for="item in couriers" :key="item.id">
-                                    <td>{{ item.lastName }} {{item.firstName }}</td>
+                                    <td>{{ item.lastName }} {{ item.firstName }}</td>
                                     <td>{{ item.email }}</td>
                                     <td>
                                         <v-icon size="small" icon="mdi-pencil" @click="openEditCourier(item)"></v-icon>
@@ -597,8 +643,8 @@ function closeSnackBar() {
                             </thead>
                             <tbody>
                                 <tr v-for="item in customers" :key="item.id">
-                                    <td>{{ item.customerName }}</td>
-                                    <td>{{ item.customerNumber }}</td>
+                                    <td>{{ item.name }}</td>
+                                    <td>{{ item.number }}</td>
                                     <td>
                                         <v-icon size="small" icon="mdi-pencil" @click="openEditCustomer(item)"></v-icon>
                                     </td>
@@ -614,7 +660,7 @@ function closeSnackBar() {
         </v-container>
     </template>
 
-        <v-dialog persistent :model-value="isAddCourier || isEditCourier" width="500">
+    <v-dialog persistent :model-value="isAddCourier || isEditCourier" width="500">
         <v-card class="rounded-lg elevation-5">
             <v-card-title class="headline mb-2">
                 {{ isAddCourier ? "Add Courier" : isEditCourier ? "Edit Courier" : "" }}
@@ -648,10 +694,8 @@ function closeSnackBar() {
             </v-card-text>
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn text
-                    @click="isAddClerk ? closeAddClerk() : isEditClerk ? closeEditClerk() : false">Close</v-btn>
-                <v-btn variant="flat" color="teal"
-                    @click="isAddClerk ? addClerk() : isEditClerk ? updateClerk() : false">
+                <v-btn text @click="isAddClerk ? closeAddClerk() : isEditClerk ? closeEditClerk() : false">Close</v-btn>
+                <v-btn variant="flat" color="teal" @click="isAddClerk ? addClerk() : isEditClerk ? updateClerk() : false">
                     {{ isAddClerk ? "Add Clerk" : isEditClerk ? "Update Clerk" : "" }}
                 </v-btn>
             </v-card-actions>
@@ -661,17 +705,15 @@ function closeSnackBar() {
     <v-dialog persistent :model-value="isEditUser" width="500">
         <v-card class="rounded-lg elevation-5">
             <v-card-title class="headline mb-2">
-                {{ isEditUser ? "Edit Clerk" : "" }}
+                {{ isEditUser ? "Edit User" : "" }}
             </v-card-title>
             <v-card-text>
-                <v-text-field v-model="newUser.role" label="Role" required></v-text-field>
+                <v-select v-model="newUser.role" label="Role" :items="['admin', 'courier', 'clerk']" required></v-select>
             </v-card-text>
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn text
-                    @click="isEditUser ? closeEditUserRole() : false">Close</v-btn>
-                <v-btn variant="flat" color="teal"
-                    @click="isEditUser? updateUserEditRole() : false">
+                <v-btn text @click="isEditUser ? closeEditUserRole() : false">Close</v-btn>
+                <v-btn variant="flat" color="teal" @click="isEditUser ? updateUserEditRole() : false">
                     {{ isEditUser ? "Update User Role" : "" }}
                 </v-btn>
             </v-card-actions>
@@ -684,8 +726,8 @@ function closeSnackBar() {
                 {{ isAddCustomer ? "Add Customer" : isEditCustomer ? "Edit Customer" : "" }}
             </v-card-title>
             <v-card-text>
-                <v-text-field v-model="newCustomer.customerName" label="Name" required></v-text-field>
-                <v-text-field v-model="newCustomer.customerNumber" label="Number" required></v-text-field>
+                <v-text-field v-model="newCustomer.name" label="Name" required></v-text-field>
+                <v-text-field v-model="newCustomer.number" label="Number" required></v-text-field>
                 <v-text-field v-model="newCustomer.location" label="Location" required></v-text-field>
                 <v-text-field v-model="newCustomer.deliveryInstructions" label="DeliveryInstructions"
                     required></v-text-field>
