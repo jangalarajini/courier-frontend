@@ -314,7 +314,6 @@ async function getAllOrders() {
   try {
     const response = await OrderServices.getOrders();
     allOrders.value = response.data;
-    await updateAllOrdersCustomerNames();
   } catch (error) {
     console.log(error);
     snackbar.value.value = true;
