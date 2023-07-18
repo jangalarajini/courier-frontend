@@ -7,8 +7,8 @@ export default {
   getClerks(){
     return apiClient.get("clerks");
   },
-  getCourierBoys(){
-    return apiClient.get("courierboys");
+  getCouriers(){
+    return apiClient.get("couriers");
   },
   addUser(user) {
     return apiClient.post("users", user);
