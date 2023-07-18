@@ -27,8 +27,8 @@ onMounted(() => {
       router.push({ name: "admin" });
     } else if (user.role === "clerk") {
       router.push({ name: "clerk" });
-    }else if (user.role === "courierboy") {
-      router.push({ name: "courierboy" });
+    }else if (user.role === "courier") {
+      router.push({ name: "courier" });
     }
   }
 });
@@ -54,9 +54,9 @@ async function login() {
     } else if(data.data.role==="clerk"){
       console.log("clerk");
       router.push({ name: "clerk" });
-    } else if(data.data.role==="courierboy"){
-      console.log("courierboy");
-      router.push({ name: "courierboy" });
+    } else if(data.data.role==="courier"){
+      console.log("courier");
+      router.push({ name: "courier" });
     }
   } catch (error) {
     console.error(error);
