@@ -1,1 +1,0 @@
-<template>CourierBoy Dashboard</template>
