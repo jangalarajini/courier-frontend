@@ -20,16 +20,17 @@ function wait(ms) {
 
 async function initializeApp() {
   try {
-
-    window.localStorage.clear();
     const isDataInserted = window.localStorage.getItem("dataInserted");
+
     if (!isDataInserted) {
+
     const adminUser = {
       firstName: "admin",
       lastName: "admin",
       email: "admin",
       password: "admin",
       role: "admin",
+      companyId : 1,
     };
 
     await UserServices.addUser(adminUser);
@@ -203,7 +204,7 @@ async function initializeApp() {
     ];
 
     for (let i = 0; i < nodes.length; i++) {
-      await NodeServices.addNode({ name: nodes[i] });
+      await NodeServices.addNode({ name: nodes[i] , companyId: 1});
     }
 
     for (let i = 0; i < edges.length; i++) {
@@ -211,6 +212,7 @@ async function initializeApp() {
     const sourceNodeIdPromise = NodeServices.getIdFromName(edge.source);
     const targetNodeIdPromise = NodeServices.getIdFromName(edge.target);
     const cost = edge.cost;
+    const companyId = 1;
 
     const sourceNodeId = await sourceNodeIdPromise;
     const targetNodeId = await targetNodeIdPromise;
@@ -221,7 +223,8 @@ async function initializeApp() {
     await EdgeServices.addEdge({
       sourcenodeid: sourcenodeid,
       targetnodeid: targetnodeid,
-      cost: cost
+      cost: cost,
+      companyId: companyId
     });
   }
 
@@ -291,6 +294,7 @@ async function initializeApp() {
         cost: cost,
         sourceid: sourceid,
         targetid: targetid,
+        companyId: 1,
       });
     }
   }

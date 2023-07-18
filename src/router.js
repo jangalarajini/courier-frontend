@@ -22,7 +22,7 @@ const router = createRouter({
       path: "/courier",
       name: "courier",
       component: () => import("./views/CourierDashboard.vue"),
-    },     
+    },    
     {
       path: "/profile",
       name: "profile",
