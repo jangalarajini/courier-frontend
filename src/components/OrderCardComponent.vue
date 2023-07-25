@@ -13,8 +13,6 @@ const customers = ref([]);
 const users = ref([]);
 const user = ref(null);
 
-//xsconst costMultipler = CompanyServices.getCustomer("1").
-
 const props = defineProps({
   order: {
     required: true,
@@ -75,17 +73,37 @@ async function getUsers() {
     <v-expand-transition>
       <v-card-text class="pt-0" v-show="showDetails">
         <h3>Order Details</h3>
-        <v-card-text class="body-1"> Bill Amount: {{ order && order.path && order.path.cost !== null ? order.path.cost :
+        <v-card-text class="body-1"> Bill Amount: $ {{ order && order.bill && order.bill !== null ? order.bill :
           'null' }}</v-card-text>
-        <v-card-text class="body-1"> Bonus Percentage: {{ order && order.bonus !== null ? order.bonus : 'null'
+        <v-card-text class="body-1"> Requested PickUp Time: {{ order && order.requestedPickUpTime !== null ?
+          order.requestedPickUpTime :
+          'Not Requested' }}</v-card-text>
+<v-card-text class="body-1"> Total Distance: {{ order?.officeToPickUpCustomerPath?.cost + order?.pickUpCustomerToDropOffCustomerPath?.cost + order?.dropOffCustomerToOfficePath?.cost !== null ?
+  order?.officeToPickUpCustomerPath?.cost + order?.pickUpCustomerToDropOffCustomerPath?.cost + order?.dropOffCustomerToOfficePath?.cost :
+  '' }} miles</v-card-text>
+
+        <v-card-text class="body-1"> Estimated Start Time: {{ order && order.estimatedStartTime !== null ?
+          order.estimatedStartTime : 'null'
         }}</v-card-text>
-        <v-card-text class="body-1"> Estimated Time: {{ order && order.estimatedTime !== null ? order.estimatedTime :
+        <v-card-text class="body-1"> Estimated PickUp Time: {{ order && order.estimatedPickUpTime !== null ?
+          order.estimatedPickUpTime :
           'null' }}</v-card-text>
-        <v-card-text class="body-1"> Path: {{ order && order.path && order.path.path !== null ? order.path.path.replace(",","-->") : 'null'
+        <v-card-text class="body-1"> Estimated DropOff Time: {{ order && order.estimatedDropOffTime !== null ?
+          order.estimatedDropOffTime :
+          'null' }}</v-card-text>
+        <v-card-text class="body-1"> Actual Start Time: {{ order && order.actualStartTime !== null ?
+          order.actualStartTime : 'null'
         }}</v-card-text>
+        <v-card-text class="body-1"> Actual PickUp Time: {{ order && order.actualPickUpTime !== null ?
+          order.actualPickUpTime :
+          'null' }}</v-card-text>
+        <v-card-text class="body-1"> Actual DropOff Time: {{ order && order.actualStartTime !== null ?
+          order.actualStartTime :
+          'null' }}</v-card-text>
         <v-card-text class="body-1"> Courier: {{ order && order.courier && order.courier.firstName &&
           order.courier.lastName ? order.courier.firstName + ' ' + order.courier.lastName : 'null' }}</v-card-text>
 
-    </v-card-text>
-  </v-expand-transition>
-</v-card></template>
+      </v-card-text>
+    </v-expand-transition>
+  </v-card>
+</template>
