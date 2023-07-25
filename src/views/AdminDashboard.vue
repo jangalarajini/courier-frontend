@@ -416,7 +416,7 @@ async function addOrder() {
     newOrder.value.estimatedStartTime = addMinutesToTime(requestedTime, -timeFromOfficeToPickUp - 5);
     newOrder.value.estimatedPickUpTime = addMinutesToTime(requestedTime, 0);
     newOrder.value.requestedPickUpTime = addMinutesToTime(requestedTime, 0);
-    newOrder.value.estimatedDropOffTime = addMinutesToTime(requestedTime, timeFromPickUpToDropOff + timeFromOfficeToPickUp + 5);
+    newOrder.value.estimatedDropOffTime = addMinutesToTime(requestedTime, timeFromPickUpToDropOff + 5);
   }
 
   delete newOrder.id;
