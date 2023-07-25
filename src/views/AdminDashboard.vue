@@ -413,7 +413,7 @@ async function addOrder() {
     newOrder.value.estimatedDropOffTime = addMinutesToTime(currentTime, timeFromPickUpToDropOff + 5 + timeFromOfficeToPickUp);
   } else {
     const requestedTime = new Date(`2023-07-20T${newOrder.value.requestedPickUpTime}`);
-    newOrder.value.estimatedStartTime = addMinutesToTime(requestedTime, -timeFromOfficeToPickUp - 5);
+    newOrder.value.estimatedStartTime = addMinutesToTime(requestedTime, -timeFromOfficeToPickUp);
     newOrder.value.estimatedPickUpTime = addMinutesToTime(requestedTime, 0);
     newOrder.value.requestedPickUpTime = addMinutesToTime(requestedTime, 0);
     newOrder.value.estimatedDropOffTime = addMinutesToTime(requestedTime, timeFromPickUpToDropOff);
