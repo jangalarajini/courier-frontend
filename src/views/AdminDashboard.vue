@@ -69,6 +69,8 @@ async function showUsers() {
     showingMapEdges.value = false;
     showingMapNodes.value = false;
     showingCompanies.value = false;
+    showingOrders.value = false;
+    showingAllOrders.value = false;
     await getUsers();
     drawer.value = false;
 }
@@ -81,6 +83,8 @@ async function showCompanies() {
     showingMapEdges.value = false;
     showingMapNodes.value = false;
     showingCompanies.value = true;
+    showingOrders.value = false;
+    showingAllOrders.value = false;
     await getCompanies();
     drawer.value = false;
 }
@@ -103,6 +107,8 @@ async function showCustomers() {
     showingMapEdges.value = false;
     showingMapNodes.value = false;
     showingCompanies.value = false;
+    showingOrders.value = false;
+    showingAllOrders.value = false;
     await getCustomers();
     drawer.value = false;
 }
@@ -115,6 +121,8 @@ async function showClerks() {
     showingMapEdges.value = false;
     showingMapNodes.value = false;
     showingCompanies.value = false;
+    showingOrders.value = false;
+    showingAllOrders.value = false;
     await getClerks();
     drawer.value = false;
 
@@ -128,6 +136,8 @@ async function showCouriers() {
     showingMapEdges.value = false;
     showingMapNodes.value = false;
     showingCompanies.value = false;
+    showingOrders.value = false;
+    showingAllOrders.value = false;
     await getCouriers();
     drawer.value = false;
 }
@@ -140,6 +150,8 @@ async function showMapNodes() {
     showingMapEdges.value = false;
     showingMapNodes.value = true;
     showingCompanies.value = false;
+    showingOrders.value = false;
+    showingAllOrders.value = false;
     await getNodes();
     drawer.value = false;
 }
@@ -152,6 +164,8 @@ async function showMapEdges() {
     showingMapNodes.value = false;
     showingMapEdges.value = true;
     showingCompanies.value = false;
+    showingOrders.value = false;
+    showingAllOrders.value = false;
     await getEdges();
     drawer.value = false;
 }
