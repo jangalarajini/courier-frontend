@@ -4,8 +4,20 @@ export default {
   getOrders() {
     return apiClient.get("orders");
   },
-  getOrdersByUserId(userId) {
-    return apiClient.get("orders/user/" + userId);
+  getOrdersByClerkId(clerkId) {
+    return apiClient.get("orders/clerk/" + clerkId);
+  },
+  getOrdersByAdminId(adminId) {
+    return apiClient.get("orders/admin/" + adminId);
+  },
+  getOrdersByCourierIdCompleted(courierId){
+    return apiClient.get(`orders/courier/${courierId}/completed`);
+  },
+  getOrdersByCourierIdInProgress(courierId){
+    return apiClient.get(`orders/courier/${courierId}/in-progress`);
+  },
+  getOrdersByCustomerId(customerId){
+    return apiClient.get("orders/customer/" + customerId);
   },
   getOrder(id) {
     return apiClient.get("orders/" + id);
