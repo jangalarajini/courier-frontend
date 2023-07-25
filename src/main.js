@@ -214,15 +214,15 @@ async function initializeApp() {
     const cost = edge.cost;
     const companyId = 1;
 
-    const sourceNodeId = await sourceNodeIdPromise;
-    const targetNodeId = await targetNodeIdPromise;
+    const sourceNodeId1 = await sourceNodeIdPromise;
+    const targetNodeId1 = await targetNodeIdPromise;
 
-    const sourcenodeid = sourceNodeId;
-    const targetnodeid = targetNodeId;
+    const sourceNodeId = sourceNodeId1;
+    const targetNodeId = targetNodeId1;
 
     await EdgeServices.addEdge({
-      sourcenodeid: sourcenodeid,
-      targetnodeid: targetnodeid,
+      sourceNodeId: sourceNodeId,
+      targetNodeId: targetNodeId,
       cost: cost,
       companyId: companyId
     });
@@ -258,8 +258,8 @@ async function initializeApp() {
     await getEdges();
   
     edgeList.value.forEach((edge) => {
-      const sourceNode = nodeList.value.find((node) => node.id === edge.sourcenodeid);
-      const targetNode = nodeList.value.find((node) => node.id === edge.targetnodeid);
+      const sourceNode = nodeList.value.find((node) => node.id === edge.sourceNodeId);
+      const targetNode = nodeList.value.find((node) => node.id === edge.targetNodeId);
   
       if (sourceNode && targetNode) {
         graph[sourceNode.name][targetNode.name] = edge.cost;
