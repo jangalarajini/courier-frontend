@@ -6,22 +6,21 @@ import { useRouter } from "vue-router";
 import UserServices from "../services/UserServices.js";
 import CustomerServices from "../services/CustomerServices.js";
 import CompanyServices from "../services/CompanyServices.js";
-import OrderCard from "../components/OrderCardComponent.vue";
 import NodeServices from "../services/NodeServices.js";
 import PathServices from "../services/PathServices.js";
+import OrderCard from "../components/OrderCardComponent.vue";
 
 
 
 const router = useRouter();
 
-const orders = ref([]);
+const allOrders = ref([]);
 
 const drawer = ref(false);
 const companyId = 1;
 const title = ref("Courier Services");
 const user = ref(null);
 
-const showingAllOrders = ref(false);
 const showingOrders = ref(false);
 const showingCustomers = ref(false);
 const showingCouriers = ref(false);
@@ -29,7 +28,6 @@ const showingCouriers = ref(false);
 async function showCouriers() {
   showingOrders.value = false;
   showingCustomers.value = false;
-  showingAllOrders.value = false;
   showingCouriers.value = true;
   await getCouriers();
   drawer.value = false;
@@ -38,16 +36,6 @@ async function showCouriers() {
 async function showOrders() {
   showingOrders.value = true;
   showingCustomers.value = false;
-  showingAllOrders.value = false;
-  showingCouriers.value = false;
-  await getOrders();
-  drawer.value = false;
-}
-
-async function showAllOrders() {
-  showingOrders.value = false;
-  showingCustomers.value = false;
-  showingAllOrders.value = true;
   showingCouriers.value = false;
   await getAllOrders();
   drawer.value = false;
@@ -56,7 +44,6 @@ async function showAllOrders() {
 async function showCustomers() {
   showingOrders.value = false;
   showingCustomers.value = true;
-  showingAllOrders.value = false;
   showingCouriers.value = false;
   await getCustomers();
   drawer.value = false;
@@ -93,7 +80,7 @@ onMounted(async () => {
   if (user.value === null) {
     router.push({ name: "login" });
   } else {
-    await getOrders();
+    await getAllOrders();
     showOrders();
   }
 });
@@ -161,33 +148,13 @@ async function getPaths() {
 }
 
 async function getCouriers() {
-  await UserServices.getCouriers()
-    .then((response) => {
-      couriers.value = response.data;
-    })
-    .catch((error) => {
-      console.log(error);
-      snackbar.value.value = true;
-      snackbar.value.color = "error";
-      snackbar.value.text = error.response.data.message;
-    });
-}
-
-async function getOrders() {
-  user.value = JSON.parse(localStorage.getItem("user"));
   try {
-    if (user.value !== null && user.value.id !== null) {
-      const response = await OrderServices.getOrdersByClerkId(user.value.id);
-      orders.value = response.data;
-    } else {
-      const response = await OrderServices.getOrders();
-      orders.value = response.data;
-    }
+    const response = await UserServices.getCouriers();
+    const data = response.data;
+    data.sort((a, b) => a.order - b.order);
+    couriers.value = data;
   } catch (error) {
     console.log(error);
-    snackbar.value.value = true;
-    snackbar.value.color = "error";
-    snackbar.value.text = error.response.data.message;
   }
 }
 
@@ -203,10 +170,6 @@ function logout() {
   user.value = null;
   router.push({ name: "login" });
 }
-
-const toggle = ref(0);
-
-const allOrders = ref([]);
 
 const isAddCustomer = ref(false);
 const isEditCustomer = ref(false);
@@ -331,58 +294,61 @@ async function addCustomer() {
 }
 
 async function addOrder() {
-  isAddOrder.value = false;
-  newOrder.value.companyId = companyId;
-  newOrder.value.pickUpCustomerId = selectedPickUpCustomer.value.id;
-  newOrder.value.dropOffCustomerId = selectedDropOffCustomer.value.id;
-  newOrder.value.courierId = selectedCourier.value.id;
-  newOrder.value.clerkId = user.value.id;
-  newOrder.value.status = "InProgress";
-  const pickUpLocation = getCustomerLocation(newOrder.value.pickUpCustomerId);
-  const dropOffLocation = getCustomerLocation(newOrder.value.dropOffCustomerId);
-  const pickUpNodeId = await getNodeId(pickUpLocation);
-  const dropOffNodeId = await getNodeId(dropOffLocation);
-  const officeNodeId = await getNodeId(companyAddress);
-  const officeToPickUpCustomerPathId = await getPathIdByNodeIds(officeNodeId, pickUpNodeId);
-  const pickUpCustomerToDropOffCustomerPathId = await getPathIdByNodeIds(pickUpNodeId, dropOffNodeId);
-  const dropOffCustomerToOfficePathId = await getPathIdByNodeIds(dropOffNodeId, officeNodeId);
-  newOrder.value.officeToPickUpCustomerPathId = officeToPickUpCustomerPathId;
-  newOrder.value.pickUpCustomerToDropOffCustomerPathId = pickUpCustomerToDropOffCustomerPathId;
-  newOrder.value.dropOffCustomerToOfficePathId = dropOffCustomerToOfficePathId;
-  const officeToPickUpCustomerPathDetails = getPathDetails(newOrder.value.officeToPickUpCustomerPathId);
-  const pickUpCustomerToDropOffCustomerPathDetails = getPathDetails(newOrder.value.pickUpCustomerToDropOffCustomerPathId);
-  const dropOffCustomerToOfficePathDetails = getPathDetails(newOrder.value.dropOffCustomerToOfficePathId);
-  const billMultipler = officeToPickUpCustomerPathDetails.cost + pickUpCustomerToDropOffCustomerPathDetails.cost + dropOffCustomerToOfficePathDetails.cost;
-  newOrder.value.bill = billMultipler * costPerBlock;
-  const timeFromOfficeToPickUp = officeToPickUpCustomerPathDetails.cost * timePerBlock;
-  const timeFromPickUpToDropOff = pickUpCustomerToDropOffCustomerPathDetails.cost * timePerBlock;
-  if (!newOrder.value.requestedPickUpTime) {
-    const currentTime = new Date();
-    newOrder.value.estimatedStartTime = addMinutesToTime(currentTime, 5);
-    newOrder.value.estimatedPickUpTime = addMinutesToTime(currentTime, timeFromOfficeToPickUp + 5);
-    newOrder.value.estimatedDropOffTime = addMinutesToTime(currentTime, timeFromPickUpToDropOff + 5 + timeFromOfficeToPickUp);
-  } else {
-    const requestedTime = new Date(`2023-07-20T${newOrder.value.requestedPickUpTime}`);
-    newOrder.value.estimatedStartTime = addMinutesToTime(requestedTime, -timeFromOfficeToPickUp);
-    newOrder.value.estimatedPickUpTime = addMinutesToTime(requestedTime, 0);
-    newOrder.value.requestedPickUpTime = addMinutesToTime(requestedTime, 0);
-    newOrder.value.estimatedDropOffTime = addMinutesToTime(requestedTime, timeFromPickUpToDropOff);
-  }
+    let courierToMove;
+    isAddOrder.value = false;
+    newOrder.value.companyId = companyId;
+    newOrder.value.pickUpCustomerId = selectedPickUpCustomer.value.id;
+    newOrder.value.dropOffCustomerId = selectedDropOffCustomer.value.id;
+    newOrder.value.courierId = selectedCourier.value.id;
+    courierToMove = selectedCourier.value;
+    newOrder.value.clerkId = user.value.id;
+    newOrder.value.status = "Created";
+    const pickUpLocation = getCustomerLocation(newOrder.value.pickUpCustomerId);
+    const dropOffLocation = getCustomerLocation(newOrder.value.dropOffCustomerId);
+    const pickUpNodeId = await getNodeId(pickUpLocation);
+    const dropOffNodeId = await getNodeId(dropOffLocation);
+    const officeNodeId = await getNodeId(companyAddress);
+    const officeToPickUpCustomerPathId = await getPathIdByNodeIds(officeNodeId, pickUpNodeId);
+    const pickUpCustomerToDropOffCustomerPathId = await getPathIdByNodeIds(pickUpNodeId, dropOffNodeId);
+    const dropOffCustomerToOfficePathId = await getPathIdByNodeIds(dropOffNodeId, officeNodeId);
+    newOrder.value.officeToPickUpCustomerPathId = officeToPickUpCustomerPathId;
+    newOrder.value.pickUpCustomerToDropOffCustomerPathId = pickUpCustomerToDropOffCustomerPathId;
+    newOrder.value.dropOffCustomerToOfficePathId = dropOffCustomerToOfficePathId;
+    const officeToPickUpCustomerPathDetails = getPathDetails(newOrder.value.officeToPickUpCustomerPathId);
+    const pickUpCustomerToDropOffCustomerPathDetails = getPathDetails(newOrder.value.pickUpCustomerToDropOffCustomerPathId);
+    const dropOffCustomerToOfficePathDetails = getPathDetails(newOrder.value.dropOffCustomerToOfficePathId);
+    const billMultipler = officeToPickUpCustomerPathDetails.cost + pickUpCustomerToDropOffCustomerPathDetails.cost + dropOffCustomerToOfficePathDetails.cost;
+    newOrder.value.bill = billMultipler * costPerBlock;
+    const timeFromOfficeToPickUp = officeToPickUpCustomerPathDetails.cost * timePerBlock;
+    const timeFromPickUpToDropOff = pickUpCustomerToDropOffCustomerPathDetails.cost * timePerBlock;
+    if (!newOrder.value.requestedPickUpTime) {
+        const currentTime = new Date();
+        newOrder.value.estimatedStartTime = addMinutesToTime(currentTime, 5);
+        newOrder.value.estimatedPickUpTime = addMinutesToTime(currentTime, timeFromOfficeToPickUp + 5);
+        newOrder.value.estimatedDropOffTime = addMinutesToTime(currentTime, timeFromPickUpToDropOff + 5 + timeFromOfficeToPickUp);
+    } else {
+        const requestedTime = new Date(`2023-07-20T${newOrder.value.requestedPickUpTime}`);
+        newOrder.value.estimatedStartTime = addMinutesToTime(requestedTime, -timeFromOfficeToPickUp);
+        newOrder.value.estimatedPickUpTime = addMinutesToTime(requestedTime, 0);
+        newOrder.value.requestedPickUpTime = addMinutesToTime(requestedTime, 0);
+        newOrder.value.estimatedDropOffTime = addMinutesToTime(requestedTime, timeFromPickUpToDropOff);
+    }
 
-  delete newOrder.id;
+    delete newOrder.id;
 
-  try {
-    await OrderServices.addOrder(newOrder.value);
-    snackbar.value.value = true;
-    snackbar.value.color = "green";
-    snackbar.value.text = `Order added successfully!`;
-  } catch (error) {
-    console.log(error);
-    snackbar.value.value = true;
-    snackbar.value.color = "error";
-    snackbar.value.text = error.response.data.message;
-  }
-  await getOrders();
+    try {
+        await OrderServices.addOrder(newOrder.value);
+        await updateCouriers(courierToMove);
+        snackbar.value.value = true;
+        snackbar.value.color = "green";
+        snackbar.value.text = `Order added successfully!`;
+    } catch (error) {
+        console.log(error);
+        snackbar.value.value = true;
+        snackbar.value.color = "error";
+        snackbar.value.text = error.response.data.message;
+    }
+    await getAllOrders();
 }
 
 
@@ -395,6 +361,27 @@ function addMinutesToTime(time, minutesToAdd) {
   const newTime = new Date(time);
   newTime.setMinutes(newTime.getMinutes() + minutesToAdd);
   return newTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+async function updateCouriers(selectedCourier) {
+  try {
+    const fetchedCouriers = await UserServices.getCouriers();
+    const updatedCouriers = fetchedCouriers.data.slice();
+    updatedCouriers.forEach((courier) => {
+      if (courier.id !== selectedCourier.id) {
+        const originalOrderValue = courier.order;
+        courier.order = originalOrderValue - 1;
+      }
+      else if (courier.id === selectedCourier.id)
+        courier.order = fetchedCouriers.data.length;
+    });
+    for (const courier of updatedCouriers) {
+      await UserServices.updateUser(courier);
+    }
+    await getCouriers();
+  } catch (error) {
+    console.error("Error updating couriers:", error);
+  }
 }
 
 function openAddCustomer() {
@@ -479,7 +466,7 @@ async function deleteOrder(order) {
       snackbar.value.color = "error";
       snackbar.value.text = error.response.data.message;
     }
-    await getOrders();
+    await getAllOrders();
   }
 }
 
@@ -512,7 +499,7 @@ async function updateOrder() {
     snackbar.value.color = "error";
     snackbar.value.text = error.response.data.message;
   }
-  await getOrders();
+  await getAllOrders();
 }
 
 function closeEditCustomer() {
@@ -533,15 +520,15 @@ function closeSnackBar() {
 }
 
 async function getAllOrders() {
-  try {
-    const response = await OrderServices.getOrders();
-    allOrders.value = response.data;
-  } catch (error) {
-    console.log(error);
-    snackbar.value.value = true;
-    snackbar.value.color = "error";
-    snackbar.value.text = error.response.data.message;
-  }
+    try {
+        const response = await OrderServices.getOrders();
+        allOrders.value = response.data;
+    } catch (error) {
+        console.log(error);
+        snackbar.value.value = true;
+        snackbar.value.color = "error";
+        snackbar.value.text = error.response.data.message;
+    }
 }
 
 function getCustomerLocation(customerId) {
@@ -559,7 +546,6 @@ function formatCourierName(courier) {
 }
 
 const availableDropOffCustomers = computed(() => {
-  // Filter out the selected pick-up customer from the drop-off customer list
   return customers.value.filter(
     (customer) => customer.id !== selectedPickUpCustomer.value?.id
   );
@@ -582,7 +568,6 @@ const availableDropOffCustomers = computed(() => {
       <v-list>
         <v-list-item prepend-icon="mdi-account" v-if="user" :title="user.firstName + ' ' + user.lastName"></v-list-item>
         <v-list-item prepend-icon="mdi-account-details" @click="showOrders()" title="Orders"></v-list-item>
-        <v-list-item prepend-icon="mdi-account-group" @click="showAllOrders()" title="All Orders"></v-list-item>
         <v-list-item prepend-icon="mdi-bike" @click="showCouriers()" title="Couriers"></v-list-item>
         <v-list-item prepend-icon="mdi-account-group" @click="showCustomers()" title="Customers"></v-list-item>
         <v-list-item style="color: red;" @click="logout()" prepend-icon="mdi-logout-variant" title="Logout"></v-list-item>
@@ -590,26 +575,6 @@ const availableDropOffCustomers = computed(() => {
     </v-navigation-drawer>
 
     <div id="body">
-
-      <template v-if="showingOrders">
-        <v-container>
-          <v-row>
-            <v-col cols="12">
-              <v-card-title class="mx-10 my-3 py-3">
-                <v-row>
-                  <h2>Orders</h2>
-                  <v-spacer></v-spacer>
-                  <v-btn variant="flat" color="teal" prepend-icon="mdi-plus" text @click="openAddOrder()">Add
-                    Order</v-btn>
-                </v-row>
-              </v-card-title>
-              <v-card-text v-if="orders.length > 0">
-                <OrderCard v-for="order in orders" :key="order.id" :order="order" />
-              </v-card-text>
-            </v-col>
-          </v-row>
-        </v-container>
-      </template>
 
       <template v-if="showingCouriers">
         <v-container>
@@ -653,22 +618,42 @@ const availableDropOffCustomers = computed(() => {
         </v-container>
       </template>
 
-      <template v-if="showingAllOrders">
+      <template v-if="showingOrders">
         <v-container>
-          <v-row>
-            <v-col cols="12">
-              <v-card-title class="mx-10 my-3 py-3">
-                <v-row>
-                  <h2>All Orders</h2>
-                </v-row>
-              </v-card-title>
-              <v-card-text v-if="allOrders.length > 0">
-                <OrderCard v-for="order in allOrders" :key="order.id" :order="order" />
-              </v-card-text>
-            </v-col>
-          </v-row>
+            <v-row>
+                <v-col cols="12">
+                    <v-card-title class="mx-10 my-3 py-3">
+                        <v-row>
+                            <h2>Orders</h2>
+                            <v-spacer></v-spacer>
+                            <v-btn variant="flat" color="teal" prepend-icon="mdi-plus" text @click="openAddOrder()">
+                                Add Order
+                            </v-btn>
+                        </v-row>
+                    </v-card-title>
+                    <v-card-text v-if="allOrders.length > 0">
+                        <template v-for="order in allOrders" :key="order.id">
+                            <v-row>
+                                <v-col cols="12">
+                                    <div style="display: grid; grid-template-columns: 1fr auto; align-items: center;">
+                                        <OrderCard :order="order" />
+                                        <v-container class="rounded-lg elevation-0 mb-8" v-if="order.status === 'Created'"
+                                            style="display: flex; justify-content: flex-end;">
+                                            <v-btn icon size="x-large" @click="deleteOrder(order)" variant="text">
+                                                <v-icon>
+                                                    mdi-delete
+                                                </v-icon>
+                                            </v-btn>
+                                        </v-container>
+                                    </div>
+                                </v-col>
+                            </v-row>
+                        </template>
+                    </v-card-text>
+                </v-col>
+            </v-row>
         </v-container>
-      </template>
+    </template>
 
       <template v-if="showingCustomers">
         <v-container>

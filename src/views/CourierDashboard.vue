@@ -5,6 +5,7 @@ import OrderServices from "../services/OrderServices.js";
 import { useRouter } from "vue-router";
 import UserServices from "../services/UserServices.js";
 import OrderCard from "../components/OrderCourierCardComponent.vue";
+import CompanyServices from "../services/CompanyServices.js";
 
 
 
@@ -16,9 +17,39 @@ const drawer = ref(false);
 const companyId = 1;
 const title = ref("Courier Services");
 const user = ref(null);
+let companyName, companyAddress, costPerBlock, timePerBlock, bonusPercentage;
+
+
+async function getCompanyDetails(companyId) {
+  try {
+    const response = await CompanyServices.getCompany(companyId);
+    const companyDetails = response.data;
+    companyName = companyDetails.name;
+    companyAddress = companyDetails.address;
+    costPerBlock = companyDetails.costPerBlock;
+    timePerBlock = companyDetails.timePerBlock;
+    bonusPercentage = companyDetails.bonusPercentage;
+    return companyDetails;
+  } catch (error) {
+    console.error("Error retrieving company details:", error);
+    return null;
+  }
+}
 
 const showingAllOrders = ref(false);
 const showingOrders = ref(false);
+
+function isStartedButtonDisabled(order) {
+  return order.status !== 'Created';
+}
+
+function isPickedUpButtonDisabled(order) {
+  return order.status !== 'Pending';
+}
+
+function isDropOffButtonDisabled(order) {
+  return order.status !== 'PickedUp';
+}
 
 async function showOrders() {
   showingOrders.value = true;
@@ -41,6 +72,7 @@ const snackbar = ref({
 });
 
 const newOrder = ref({
+  id: "",
   pickUpCustomerId: "",
   dropOffCustomerId: "",
   clerkId: "",
@@ -49,19 +81,23 @@ const newOrder = ref({
   requestedPickUpTime: "",
   estimatedPickUpTime: "",
   bill: "",
+  adminId: "",
   estimatedDropOffTime: "",
   officeToPickUpCustomerPathId: "",
   pickUpCustomerToDropOffCustomerPathId: "",
   dropOffCustomerToOfficePathId: "",
+  actualStartTime: " ",
+  actualDropOffTime: " ",
+  actualPickUpTime: " ",
   companyId: companyId,
 });
 
 onMounted(async () => {
+  getCompanyDetails(companyId);
   user.value = JSON.parse(localStorage.getItem("user"));
   if (user.value === null) {
     router.push({ name: "login" });
   } else {
-    await getOrders();
     showOrders();
   }
 });
@@ -108,7 +144,7 @@ function closeSnackBar() {
 }
 
 async function getAllOrders() {
-    user.value = JSON.parse(localStorage.getItem("user"));
+  user.value = JSON.parse(localStorage.getItem("user"));
   try {
     if (user.value !== null && user.value.id !== null) {
       const response = await OrderServices.getOrdersByCourierIdCompleted(user.value.id);
@@ -124,6 +160,136 @@ async function getAllOrders() {
     snackbar.value.text = error.response.data.message;
   }
 }
+
+async function updateStartTime(order) {
+  try {
+    newOrder.value.id = order.id;
+    newOrder.value.pickUpCustomerId = order.pickUpCustomerId;
+    newOrder.value.dropOffCustomerId = order.dropOffCustomerId;
+    newOrder.value.bill = order.bill;
+    newOrder.value.estimatedStartTime = order.estimatedStartTime;
+    newOrder.value.estimatedPickUpTime = order.estimatedPickUpTime;
+    newOrder.value.requestedPickUpTime = order.requestedPickUpTime;
+    newOrder.value.estimatedDropOffTime = order.estimatedDropOffTime;
+    newOrder.value.bonus = order.bonus;
+    newOrder.value.status = "Pending";
+    newOrder.value.officeToPickUpCustomerPathId = order.officeToPickUpCustomerPathId;
+    newOrder.value.pickUpCustomerToDropOffCustomerPathId = order.pickUpCustomerToDropOffCustomerPathId;
+    newOrder.value.dropOffCustomerToOfficePathId = order.dropOffCustomerToOfficePathId;
+    newOrder.value.courierId = order.courierId;
+    newOrder.value.clerkId = order.clerkId;
+    newOrder.value.adminId = order.adminId;
+    const currentTime = new Date();
+    newOrder.value.actualStartTime = addMinutesToTime(currentTime, 0);
+    updateOrder();
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+async function updatePickUpTime(order) {
+  try {
+    newOrder.value.id = order.id;
+    newOrder.value.pickUpCustomerId = order.pickUpCustomerId;
+    newOrder.value.dropOffCustomerId = order.dropOffCustomerId;
+    newOrder.value.bill = order.bill;
+    newOrder.value.estimatedStartTime = order.estimatedStartTime;
+    newOrder.value.estimatedPickUpTime = order.estimatedPickUpTime;
+    newOrder.value.requestedPickUpTime = order.requestedPickUpTime;
+    newOrder.value.estimatedDropOffTime = order.estimatedDropOffTime;
+    newOrder.value.bonus = order.bonus;
+    newOrder.value.status = "PickedUp";
+    newOrder.value.officeToPickUpCustomerPathId = order.officeToPickUpCustomerPathId;
+    newOrder.value.pickUpCustomerToDropOffCustomerPathId = order.pickUpCustomerToDropOffCustomerPathId;
+    newOrder.value.dropOffCustomerToOfficePathId = order.dropOffCustomerToOfficePathId;
+    newOrder.value.courierId = order.courierId;
+    newOrder.value.clerkId = order.clerkId;
+    newOrder.value.adminId = order.adminId;
+    newOrder.value.actualStartTime = order.actualStartTime;
+    const currentTime = new Date();
+    newOrder.value.actualPickUpTime = addMinutesToTime(currentTime, 0);
+    updateOrder();
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+async function updateDropOffTime(order) {
+  try {
+    newOrder.value.id = order.id;
+    newOrder.value.pickUpCustomerId = order.pickUpCustomerId;
+    newOrder.value.dropOffCustomerId = order.dropOffCustomerId;
+    newOrder.value.bill = order.bill;
+    newOrder.value.estimatedStartTime = order.estimatedStartTime;
+    newOrder.value.estimatedPickUpTime = order.estimatedPickUpTime;
+    newOrder.value.requestedPickUpTime = order.requestedPickUpTime;
+    newOrder.value.estimatedDropOffTime = order.estimatedDropOffTime;
+    newOrder.value.bonus = order.bonus;
+    newOrder.value.status = "Delivered";
+    newOrder.value.officeToPickUpCustomerPathId = order.officeToPickUpCustomerPathId;
+    newOrder.value.pickUpCustomerToDropOffCustomerPathId = order.pickUpCustomerToDropOffCustomerPathId;
+    newOrder.value.dropOffCustomerToOfficePathId = order.dropOffCustomerToOfficePathId;
+    newOrder.value.courierId = order.courierId;
+    newOrder.value.clerkId = order.clerkId;
+    newOrder.value.adminId = order.adminId;
+    newOrder.value.actualStartTime = order.actualStartTime;
+    newOrder.value.actualPickUpTime = order.actualPickUpTime;
+    const currentTime = new Date();
+    newOrder.value.actualDropOffTime = addMinutesToTime(currentTime, 0);
+    const dropOffTime = convertTo24HourFormat(newOrder.value.actualDropOffTime);
+    const estimatedDropOffTime = convertTo24HourFormat(newOrder.value.estimatedDropOffTime);
+    if (isTimeEarlier(dropOffTime, estimatedDropOffTime))
+      newOrder.value.bonus = (bonusPercentage * newOrder.value.bill) / 100;
+    else
+      newOrder.value.bonus = 0;
+    updateOrder();
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+function isTimeEarlier(time1, time2) {
+  const date1 = new Date(`1970-01-01T${time1}`);
+  const date2 = new Date(`1970-01-01T${time2}`);
+  return date1 < date2;
+}
+
+function convertTo24HourFormat(time12Hour) {
+  const [time, period] = time12Hour.split(" ");
+  const [hours, minutes, seconds] = time.split(":").map(Number);
+
+  let hours24Format = hours;
+  if (period === "PM" && hours !== 12) {
+    hours24Format += 12;
+  } else if (period === "AM" && hours === 12) {
+    hours24Format = 0;
+  }
+
+  return `${String(hours24Format).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+async function updateOrder() {
+  try {
+    await OrderServices.updateOrder(newOrder.value);
+    snackbar.value.value = true;
+    snackbar.value.color = "success";
+    snackbar.value.text = `order updated successfully!`;
+  } catch (error) {
+    console.log(error);
+    snackbar.value.value = true;
+    snackbar.value.color = "error";
+    snackbar.value.text = error.response.data.message;
+  }
+  await getOrders();
+}
+
+
+function addMinutesToTime(time, minutesToAdd) {
+  const newTime = new Date(time);
+  newTime.setMinutes(newTime.getMinutes() + minutesToAdd);
+  return newTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
 </script>
 
 <template>
@@ -159,7 +325,28 @@ async function getAllOrders() {
                 </v-row>
               </v-card-title>
               <v-card-text v-if="orders.length > 0">
-                <OrderCard v-for="order in orders" :key="order.id" :order="order" />
+                <template v-for="order in orders" :key="order.id">
+                  <v-container>
+                    <v-row>
+                      <v-btn variant="flat" color="teal" :disabled="isStartedButtonDisabled(order)" text
+                        @click="() => updateStartTime(order)">
+                        Started
+                      </v-btn>
+                      <v-spacer></v-spacer>
+                      <v-btn variant="flat" color="teal" :disabled="isPickedUpButtonDisabled(order)" text
+                        @click="() => updatePickUpTime(order)">
+                        PickedUp
+                      </v-btn>
+                      <v-spacer></v-spacer>
+                      <v-btn variant="flat" color="teal" :disabled="isDropOffButtonDisabled(order)" text
+                        @click="() => updateDropOffTime(order)">
+                        DropOff
+                      </v-btn>
+                    </v-row>
+                  </v-container>
+                  <v-spacer></v-spacer>
+                  <OrderCard :order="order" />
+                </template>
               </v-card-text>
             </v-col>
           </v-row>

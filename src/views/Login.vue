@@ -45,6 +45,7 @@ async function createAccount() {
       return;
     }
     user.value.role = "courier";
+    user.value.order =0;
     await UserServices.addUser(user.value);
     snackbar.value.value = true;
     snackbar.value.color = "green";
@@ -73,15 +74,11 @@ async function login() {
     snackbar.value.value = true;
     snackbar.value.color = "green";
     snackbar.value.text = "Login successful!";
-    console.log(data.data);
     if (data.data.role === "admin") {
-      console.log("admin");
       router.push({ name: "admin" });
     } else if(data.data.role==="clerk"){
-      console.log("clerk");
       router.push({ name: "clerk" });
     } else if(data.data.role==="courier"){
-      console.log("courier");
       router.push({ name: "courier" });
     }
   } catch (error) {

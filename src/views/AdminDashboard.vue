@@ -1,12 +1,14 @@
 <script setup>
-import { computed,onMounted } from "vue";
+import { computed, onMounted } from "vue";
+import jsPDF from 'jspdf';
+import "jspdf-autotable";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import UserServices from "../services/UserServices.js";
 import CustomerServices from "../services/CustomerServices.js";
+import OrderCard from "../components/OrderCardComponent.vue";
 import NodeServices from "../services/NodeServices.js";
 import EdgeServices from "../services/EdgeServices.js";
-import OrderCard from "../components/OrderCardComponent.vue";
 import CompanyServices from "../services/CompanyServices.js";
 import OrderServices from "../services/OrderServices";
 import PathServices from "../services/PathServices.js";
@@ -16,76 +18,99 @@ const user = ref(null);
 const title = ref("Courier Services");
 const drawer = ref(false);
 const companyId = 1;
-const companies = ref([]);
-const allOrders = ref([]);
-const orders = ref([]);
-const paths = ref([]);
+const showPlaces = ref(false);
+const showPaths = ref(false);
+const selectedPickUpCustomer = ref("");
+const selectedFromNode = ref("");
+const selectedToNode = ref("");
+const selectedCourier = ref("");
+const selectedDropOffCustomer = ref("");
 
+let companyName, companyAddress, costPerBlock, timePerBlock, bonusPercentage;
 
-const showingUsers = ref(false);
-const showingCustomers = ref(false);
-const showingClerks = ref(false);
-const showingCouriers = ref(false);
-const showingMapNodes = ref(false);
-const showingMapEdges = ref(false);
-const showingCompanies = ref(false);
-const showingAllOrders = ref(false);
-const showingOrders = ref(false);
-
-async function showOrders() {
-    showingUsers.value = false;
-    showingCustomers.value = false;
-    showingClerks.value = false;
-    showingCouriers.value = false;
-    showingMapEdges.value = false;
-    showingMapNodes.value = false;
-    showingCompanies.value = false;
-    showingOrders.value = true;
-    showingAllOrders.value = false;
-
-    await getOrders();
-    drawer.value = false;
+async function getCompanyDetails(companyId) {
+    try {
+        const response = await CompanyServices.getCompany(companyId);
+        const companyDetails = response.data;
+        companyName = companyDetails.name;
+        companyAddress = companyDetails.address;
+        costPerBlock = companyDetails.costPerBlock;
+        timePerBlock = companyDetails.timePerBlock;
+        bonusPercentage = companyDetails.bonusPercentage;
+        return companyDetails;
+    } catch (error) {
+        console.error("Error retrieving company details:", error);
+        return null;
+    }
 }
 
-async function showAllOrders() {
+const showingCustomers = ref(false);
+const showingMap = ref(false);
+const showingCompanies = ref(false);
+const showingOrders = ref(false);
+const showingCouriersBonusPercentage = ref(false);
+
+const companies = ref([]);
+const allOrders = ref([]);
+
+const paths = ref([]);
+
+const orders = ref([]);
+
+async function showOrders() {
+    showingMap.value = false;
     showingUsers.value = false;
     showingCustomers.value = false;
-    showingClerks.value = false;
-    showingCouriers.value = false;
-    showingMapEdges.value = false;
-    showingMapNodes.value = false;
     showingCompanies.value = false;
-    showingOrders.value = false;
-    showingAllOrders.value = true;
+    showingOrders.value = true;
+    showingCouriersBonusPercentage.value = false;
     await getAllOrders();
     drawer.value = false;
 }
 
-async function showUsers() {
-    showingUsers.value = true;
+async function showCompanies() {
+    showingMap.value = false;
+    showingUsers.value = false;
     showingCustomers.value = false;
-    showingClerks.value = false;
-    showingCouriers.value = false;
-    showingMapEdges.value = false;
-    showingMapNodes.value = false;
-    showingCompanies.value = false;
+    showingCompanies.value = true;
     showingOrders.value = false;
-    showingAllOrders.value = false;
-    await getUsers();
+    showingCouriersBonusPercentage.value = false;
+    await getCompanies();
     drawer.value = false;
 }
 
-async function showCompanies() {
+async function showCustomers() {
+    showingMap.value = false;
+    showingMap.value = false;
+    showingUsers.value = false;
+    showingCustomers.value = true;
+    showingCompanies.value = false;
+    showingOrders.value = false;
+    showingCouriersBonusPercentage.value = false;
+    await getCustomers();
+    drawer.value = false;
+}
+
+async function showCouriersBonusPercentage() {
+    showingMap.value = false;
     showingUsers.value = false;
     showingCustomers.value = false;
-    showingClerks.value = false;
-    showingCouriers.value = false;
-    showingMapEdges.value = false;
-    showingMapNodes.value = false;
-    showingCompanies.value = true;
+    showingCompanies.value = false;
     showingOrders.value = false;
-    showingAllOrders.value = false;
-    await getCompanies();
+    showingCouriersBonusPercentage.value = true;
+    await getCouriers();
+    drawer.value = false;
+}
+
+async function showMap() {
+    showingMap.value = true;
+    showingUsers.value = false;
+    showingCustomers.value = false;
+    showingCompanies.value = false;
+    showingOrders.value = false;
+    showingCouriersBonusPercentage.value = false;
+    await getNodes();
+    await getEdges();
     drawer.value = false;
 }
 
@@ -99,88 +124,67 @@ async function getCompanies() {
         });
 }
 
-async function showCustomers() {
-    showingUsers.value = false;
-    showingCustomers.value = true;
-    showingClerks.value = false;
-    showingCouriers.value = false;
-    showingMapEdges.value = false;
-    showingMapNodes.value = false;
-    showingCompanies.value = false;
-    showingOrders.value = false;
-    showingAllOrders.value = false;
-    await getCustomers();
-    drawer.value = false;
-}
-
-async function showClerks() {
-    showingUsers.value = false;
-    showingCustomers.value = false;
-    showingClerks.value = true;
-    showingCouriers.value = false;
-    showingMapEdges.value = false;
-    showingMapNodes.value = false;
-    showingCompanies.value = false;
-    showingOrders.value = false;
-    showingAllOrders.value = false;
-    await getClerks();
-    drawer.value = false;
-
-}
-
-async function showCouriers() {
-    showingUsers.value = false;
-    showingCustomers.value = false;
-    showingClerks.value = false;
-    showingCouriers.value = true;
-    showingMapEdges.value = false;
-    showingMapNodes.value = false;
-    showingCompanies.value = false;
-    showingOrders.value = false;
-    showingAllOrders.value = false;
-    await getCouriers();
-    drawer.value = false;
-}
-
-async function showMapNodes() {
-    showingUsers.value = false;
-    showingCustomers.value = false;
-    showingClerks.value = false;
-    showingCouriers.value = false;
-    showingMapEdges.value = false;
-    showingMapNodes.value = true;
-    showingCompanies.value = false;
-    showingOrders.value = false;
-    showingAllOrders.value = false;
-    await getNodes();
-    drawer.value = false;
-}
-
-async function showMapEdges() {
-    showingUsers.value = false;
-    showingCustomers.value = false;
-    showingClerks.value = false;
-    showingCouriers.value = false;
-    showingMapNodes.value = false;
-    showingMapEdges.value = true;
-    showingCompanies.value = false;
-    showingOrders.value = false;
-    showingAllOrders.value = false;
-    await getEdges();
-    drawer.value = false;
-}
-
 const snackbar = ref({
     value: false,
     color: "",
     text: "",
 });
 
-const userList = ref([]);
-const clerks = ref([]);
-const couriers = ref([]);
 const nodes = ref([]);
 const edges = ref([]);
+
+async function addCustomer() {
+    isAddCustomer.value = false;
+    delete newCustomer.id;
+    try {
+        await CustomerServices.addCustomer(newCustomer.value);
+        snackbar.value.value = true;
+        snackbar.value.color = "success";
+        snackbar.value.text = `${newCustomer.value.name} added successfully!`;
+    } catch (error) {
+        console.log(error);
+        snackbar.value.value = true;
+        snackbar.value.color = "error";
+        snackbar.value.text = error.response.data.message;
+    }
+    await getCustomers();
+}
+
+async function addNode() {
+    isAddNode.value = false;
+    delete newNode.id;
+    try {
+        await NodeServices.addNode(newNode.value);
+        snackbar.value.value = true;
+        snackbar.value.color = "success";
+        snackbar.value.text = `${newNode.value.name} added successfully!`;
+    } catch (error) {
+        console.log(error);
+        snackbar.value.value = true;
+        snackbar.value.color = "error";
+        snackbar.value.text = error.response.data.message;
+    }
+    await getNodes();
+}
+
+async function addEdge() {
+    isAddEdge.value = false;
+    delete newEdge.id;
+    try {
+        newEdge.value.sourceNodeId = selectedFromNode.value.id;
+        newEdge.value.targetNodeId = selectedToNode.value.id;
+        await EdgeServices.addEdge(newEdge.value);
+        snackbar.value.value = true;
+        snackbar.value.color = "success";
+        snackbar.value.text = `Edge added successfully!`;
+    } catch (error) {
+        console.log(error);
+        snackbar.value.value = true;
+        snackbar.value.color = "error";
+        snackbar.value.text = error.response.data.message;
+    }
+    await getEdges();
+}
 
 async function getNodes() {
     NodeServices.getNodes()
@@ -202,64 +206,49 @@ async function getEdges() {
         });
 }
 
-async function getUsers() {
-    UserServices.getUser()
-        .then((data) => {
-            userList.value = data.data;
-        })
-        .catch((error) => {
-            console.log(error);
-        });
-}
-
-async function getClerks() {
-    UserServices.getClerks()
-        .then((data) => {
-            clerks.value = data.data;
-        })
-        .catch((error) => {
-            console.log(error);
-        });
-}
-
 async function getCouriers() {
-    UserServices.getCouriers()
-        .then((data) => {
-            couriers.value = data.data;
-        })
-        .catch((error) => {
-            console.log(error);
+    try {
+        const response = await UserServices.getCouriers();
+        const data = response.data;
+        data.sort((a, b) => a.order - b.order);
+        couriers.value = data;
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+async function updateCouriers(selectedCourier) {
+    try {
+        const fetchedCouriers = await UserServices.getCouriers();
+        const updatedCouriers = fetchedCouriers.data.slice();
+        updatedCouriers.forEach((courier) => {
+            if (courier.id !== selectedCourier.id) {
+                const originalOrderValue = courier.order;
+                courier.order = originalOrderValue - 1;
+            }
+            else if (courier.id === selectedCourier.id)
+                courier.order = fetchedCouriers.data.length;
         });
+        for (const courier of updatedCouriers) {
+            await UserServices.updateUser(courier);
+        }
+        await getCouriers();
+    } catch (error) {
+        console.error("Error updating couriers:", error);
+    }
 }
 
 function getPathDetails(pathId) {
-  const path = paths.value.find((c) => c.id === pathId);
-  if (path) {
-    return path;
-  } else {
-    return "Path not found";
-  }
-}
-
-async function getOrders() {
-  user.value = JSON.parse(localStorage.getItem("user"));
-  try {
-    if (user.value !== null && user.value.id !== null) {
-      const response = await OrderServices.getOrdersByAdminId(user.value.id);
-      orders.value = response.data;
+    const path = paths.value.find((c) => c.id === pathId);
+    if (path) {
+        return path;
     } else {
-      const response = await OrderServices.getOrders();
-      orders.value = response.data;
+        return "Path not found";
     }
-  } catch (error) {
-    console.log(error);
-    snackbar.value.value = true;
-    snackbar.value.color = "error";
-    snackbar.value.text = error.response.data.message;
-  }
 }
 
 const customers = ref([]);
+const couriers = ref([]);
 
 async function getCustomers() {
     CustomerServices.getCustomers()
@@ -272,15 +261,20 @@ async function getCustomers() {
 }
 
 async function getNodeId(location) {
-  const nodeId = await NodeServices.getIdFromName(location);
-  return nodeId;
+    const nodeId = await NodeServices.getIdFromName(location);
+    return nodeId;
 }
 
 onMounted(async () => {
     await getCustomers();
-  await getCouriers();
-  await getCompanyDetails(1);
-  await getPaths();
+    await getCouriers();
+    // if (!isDataLoaded.value) {
+    //     await updateCouriers();
+    //     await getCouriers();
+    //     isDataLoaded.value = true;
+    // }
+    await getCompanyDetails(1);
+    await getPaths();
     user.value = JSON.parse(localStorage.getItem("user"));
     if (user.value === null) {
         router.push({ name: "login" });
@@ -292,16 +286,16 @@ onMounted(async () => {
 });
 
 async function getPaths() {
-  await PathServices.getPaths()
-    .then((response) => {
-      paths.value = response.data;
-    })
-    .catch((error) => {
-      console.log(error);
-      snackbar.value.value = true;
-      snackbar.value.color = "error";
-      snackbar.value.text = error.response.data.message;
-    });
+    await PathServices.getPaths()
+        .then((response) => {
+            paths.value = response.data;
+        })
+        .catch((error) => {
+            console.log(error);
+            snackbar.value.value = true;
+            snackbar.value.color = "error";
+            snackbar.value.text = error.response.data.message;
+        });
 }
 
 function logout() {
@@ -316,393 +310,413 @@ function logout() {
     user.value = null;
     router.push({ name: "login" });
 }
-
-const isAddClerk = ref(false);
-const isEditClerk = ref(false);
-const isAddCourier = ref(false);
-const isEditCourier = ref(false);
-const isEditUser = ref(false);
-const selectedPickUpCustomer = ref("");
-const selectedCourier = ref("");
-const selectedDropOffCustomer = ref("");
-let companyName, companyAddress, costPerBlock, timePerBlock, bonusPercentage;
-
-async function getCompanyDetails(companyId) {
-  try {
-    const response = await CompanyServices.getCompany(companyId);
-    const companyDetails = response.data;
-    companyName = companyDetails.name;
-    companyAddress = companyDetails.address;
-    costPerBlock = companyDetails.costPerBlock;
-    timePerBlock = companyDetails.timePerBlock;
-    bonusPercentage = companyDetails.bonusPercentage;
-    return companyDetails;
-  } catch (error) {
-    console.error("Error retrieving company details:", error);
-    return null;
-  }
-}
-
 function addMinutesToTime(time, minutesToAdd) {
-  const newTime = new Date(time);
-  newTime.setMinutes(newTime.getMinutes() + minutesToAdd);
-  return newTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const newTime = new Date(time);
+    newTime.setMinutes(newTime.getMinutes() + minutesToAdd);
+    return newTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-const newClerk = ref({
-    firstName: "",
-    lastName: "",
-    email: "",
-    role: "",
-    companyId: companyId,
+const isAddOrder = ref(false);
+const isEditOrder = ref(false);
+const isGenerateReport = ref(false);
+const isGenerateBill = ref(false);
 
+const newOrder = ref({
+    pickUpCustomerId: "",
+    dropOffCustomerId: "",
+    adminId: "",
+    courierId: "",
+    status: "",
+    requestedPickUpTime: "",
+    estimatedPickUpTime: "",
+    bill: "",
+    estimatedDropOffTime: "",
+    officeToPickUpCustomerPathId: "",
+    pickUpCustomerToDropOffCustomerPathId: "",
+    dropOffCustomerToOfficePathId: "",
+    companyId: companyId,
 });
+
+async function addOrder() {
+    let courierToMove;
+    isAddOrder.value = false;
+    newOrder.value.companyId = companyId;
+    newOrder.value.pickUpCustomerId = selectedPickUpCustomer.value.id;
+    newOrder.value.dropOffCustomerId = selectedDropOffCustomer.value.id;
+    newOrder.value.courierId = selectedCourier.value.id;
+    courierToMove = selectedCourier.value;
+    courierToMove.isOccupied = true;
+    newOrder.value.adminId = user.value.id;
+    newOrder.value.status = "Created";
+    const pickUpLocation = getCustomerLocation(newOrder.value.pickUpCustomerId);
+    const dropOffLocation = getCustomerLocation(newOrder.value.dropOffCustomerId);
+    const pickUpNodeId = await getNodeId(pickUpLocation);
+    const dropOffNodeId = await getNodeId(dropOffLocation);
+    const officeNodeId = await getNodeId(companyAddress);
+    const officeToPickUpCustomerPathId = await getPathIdByNodeIds(officeNodeId, pickUpNodeId);
+    const pickUpCustomerToDropOffCustomerPathId = await getPathIdByNodeIds(pickUpNodeId, dropOffNodeId);
+    const dropOffCustomerToOfficePathId = await getPathIdByNodeIds(dropOffNodeId, officeNodeId);
+    newOrder.value.officeToPickUpCustomerPathId = officeToPickUpCustomerPathId;
+    newOrder.value.pickUpCustomerToDropOffCustomerPathId = pickUpCustomerToDropOffCustomerPathId;
+    newOrder.value.dropOffCustomerToOfficePathId = dropOffCustomerToOfficePathId;
+    const officeToPickUpCustomerPathDetails = getPathDetails(newOrder.value.officeToPickUpCustomerPathId);
+    const pickUpCustomerToDropOffCustomerPathDetails = getPathDetails(newOrder.value.pickUpCustomerToDropOffCustomerPathId);
+    const dropOffCustomerToOfficePathDetails = getPathDetails(newOrder.value.dropOffCustomerToOfficePathId);
+    const billMultipler = officeToPickUpCustomerPathDetails.cost + pickUpCustomerToDropOffCustomerPathDetails.cost + dropOffCustomerToOfficePathDetails.cost;
+    newOrder.value.bill = billMultipler * costPerBlock;
+    const timeFromOfficeToPickUp = officeToPickUpCustomerPathDetails.cost * timePerBlock;
+    const timeFromPickUpToDropOff = pickUpCustomerToDropOffCustomerPathDetails.cost * timePerBlock;
+    if (!newOrder.value.requestedPickUpTime) {
+        const currentTime = new Date();
+        newOrder.value.estimatedStartTime = addMinutesToTime(currentTime, 5);
+        newOrder.value.estimatedPickUpTime = addMinutesToTime(currentTime, timeFromOfficeToPickUp + 5);
+        newOrder.value.estimatedDropOffTime = addMinutesToTime(currentTime, timeFromPickUpToDropOff + 5 + timeFromOfficeToPickUp);
+    } else {
+        const requestedTime = new Date(`2023-07-20T${newOrder.value.requestedPickUpTime}`);
+        newOrder.value.estimatedStartTime = addMinutesToTime(requestedTime, -timeFromOfficeToPickUp);
+        newOrder.value.estimatedPickUpTime = addMinutesToTime(requestedTime, 0);
+        newOrder.value.requestedPickUpTime = addMinutesToTime(requestedTime, 0);
+        newOrder.value.estimatedDropOffTime = addMinutesToTime(requestedTime, timeFromPickUpToDropOff);
+    }
+
+    delete newOrder.id;
+
+    try {
+        await OrderServices.addOrder(newOrder.value);
+        await updateCouriers(courierToMove);
+        snackbar.value.value = true;
+        snackbar.value.color = "green";
+        snackbar.value.text = `Order added successfully!`;
+    } catch (error) {
+        console.log(error);
+        snackbar.value.value = true;
+        snackbar.value.color = "error";
+        snackbar.value.text = error.response.data.message;
+    }
+    await getAllOrders();
+}
+
+async function generateReport() {
+    isGenerateReport.value = false;
+    if (!selectedFromDate.value || !selectedToDate.value) {
+        snackbar.value.value = true;
+        snackbar.value.color = "error";
+        snackbar.value.text = "Please select both From Date and To Date.";
+    } else {
+        let totalNoOfOrders = 0;
+        const customerTotals = {};
+        for (const customer of customers.value) {
+            await getOrdersForCustomer(customer);
+            if (customerOrders.value && customerOrders.value.length > 0) {
+                const fromDate = new Date(selectedFromDate.value);
+                const toDate = new Date(selectedToDate.value);
+
+                const data = customerOrders.value.filter((order) => {
+                    const orderDate = new Date(order.createdAt);
+                    return orderDate >= fromDate && orderDate <= toDate;
+                });
+
+                const customerTotal = data.reduce((sum, order) => sum + order.bill, 0);
+                totalNoOfOrders += data.length;
+                customerTotals[customer.name] = customerTotal;
+            }
+        }
+
+        const doc = new jsPDF();
+        doc.text("Company Report", 10, 10);
+
+        const columns = [
+            { title: "Customer Name", dataKey: "name" },
+            { title: "Total Bill", dataKey: "bill" },
+        ];
+
+        const data = Object.entries(customerTotals).map(([name, bill]) => ({ name, bill }));
+
+        const total = data.reduce((sum, item) => sum + item.bill, 0);
+
+        data.push({ name: "Total", bill: total });
+        data.push({ name: "Total Number of Orders", bill: totalNoOfOrders });
+
+        doc.autoTable({
+            columns: columns,
+            body: data,
+            startY: 20,
+        });
+
+        const fileName = `${companyName}_${selectedFromDate.value}_${selectedToDate.value}.pdf`;
+        doc.save(fileName);
+    }
+}
+
+
+async function generateBill() {
+    isGenerateBill.value = false;
+    if (!selectedFromDate.value || !selectedToDate.value) {
+        snackbar.value.value = true;
+        snackbar.value.color = "error";
+        snackbar.value.text = "Please select both From Date and To Date.";
+    }
+    else {
+        await getOrdersForCustomer(selectedCustomer);
+        if (customerOrders.value && customerOrders.value.length > 0) {
+            const columns = [
+                { title: "Title", dataKey: "dropOffCustomer.name" },
+                { title: "Bill Amount", dataKey: "bill" },
+            ];
+
+            const doc = new jsPDF();
+            doc.text("Monthly Bill", 10, 10);
+
+            const fromDate = new Date(selectedFromDate.value);
+            const toDate = new Date(selectedToDate.value);
+
+            const data = customerOrders.value
+                .filter((order) => {
+                    const orderDate = new Date(order.createdAt);
+                    return orderDate >= fromDate && orderDate <= toDate;
+                })
+                .map((order) => ({
+                    "dropOffCustomer.name": order.dropOffCustomer.name,
+                    "bill": order.bill,
+                }));
+
+            const total = data.reduce((sum, order) => sum + order.bill, 0);
+
+            data.push({
+                "dropOffCustomer.name": "Total",
+                "bill": total,
+            });
+
+            doc.autoTable({
+                columns: columns,
+                body: data,
+                startY: 20,
+            });
+
+            doc.save(selectedCustomer.name + "_" + selectedFromDate.value + "_" + selectedToDate.value + ".pdf");
+        }
+    }
+}
+
+const availableDropOffCustomers = computed(() => {
+    return customers.value.filter(
+        (customer) => customer.id !== selectedPickUpCustomer.value?.id
+    );
+});
+
+const availableToNodes = computed(() => {
+    return nodes.value.filter(
+        (node) => node.id !== selectedFromNode.value?.id
+    );
+});
+
+async function getAllOrders() {
+    try {
+        const response = await OrderServices.getOrders();
+        allOrders.value = response.data;
+    } catch (error) {
+        console.log(error);
+        snackbar.value.value = true;
+        snackbar.value.color = "error";
+        snackbar.value.text = error.response.data.message;
+    }
+}
+
+function closeEditOrder() {
+    isEditOrder.value = false;
+}
+
+async function updateOrder() {
+    isEditOrder.value = false;
+    try {
+        await OrderServices.updateOrder(newOrder.value);
+        snackbar.value.value = true;
+        snackbar.value.color = "success";
+        snackbar.value.text = `${newOrder.value.name} updated successfully!`;
+    } catch (error) {
+        console.log(error);
+        snackbar.value.value = true;
+        snackbar.value.color = "error";
+        snackbar.value.text = error.response.data.message;
+    }
+    await getAllOrders();
+}
+
+async function deleteOrder(order) {
+
+    if (confirm("Are you sure you want to delete order") === true) {
+        try {
+            await OrderServices.deleteOrder(order.id);
+            snackbar.value.value = true;
+            snackbar.value.color = "success";
+            snackbar.value.text = `${order.name} deleted successfully!`;
+        } catch (error) {
+            console.log(error);
+            snackbar.value.value = true;
+            snackbar.value.color = "error";
+            snackbar.value.text = error.response.data.message;
+        }
+        await getAllOrders();
+    }
+}
+
+function closeAddOrder() {
+    isAddOrder.value = false;
+}
+
+function openEditOrder(order) {
+    newOrder.value.id = order.id;
+    newOrder.value.pickUpCustomerId = order.pickUpCustomerId;
+    newOrder.value.dropOffCustomerId = order.dropOffCustomerId;
+    newOrder.value.bill = order.bill;
+    newOrder.value.estimatedTime = order.estimatedTime;
+    newOrder.value.bonus = order.bonus;
+    newOrder.value.status = order.status;
+    newOrder.value.pathId = order.pathId;
+    newOrder.value.courierId = order.courierId;
+    isEditOrder.value = true;
+}
+
+function openAddOrder() {
+    newOrder.value.id = undefined;
+    selectedDropOffCustomer.value = undefined;
+    selectedPickUpCustomer.value = undefined;
+    selectedCourier.value = undefined;
+    newOrder.value.requestedPickUpTime = undefined;
+    newOrder.value.bill = undefined;
+    newOrder.value.estimatedDropOffTime = undefined;
+    newOrder.value.estimatedPickUpTime = undefined;
+    newOrder.value.pickUpCustomerToDropOffCustomerPathId = undefined;
+    newOrder.value.dropOffCustomerToOfficePathId = undefined;
+    newOrder.value.officeToPickUpCustomerPathId = undefined;
+    isAddOrder.value = true;
+}
+
+
+
+
+
+function openGenerateReport() {
+    isGenerateReport.value = true;
+}
+
+let selectedCustomer = ref(null);
+function openGenerateBill(item) {
+    selectedCustomer = item;
+    isGenerateBill.value = true;
+}
+
+
+function closeGenerateReport() {
+    isGenerateReport.value = false;
+}
+
+
+function closeGenerateBill() {
+    isGenerateBill.value = false;
+}
+
+const showingUsers = ref(false);
+
+async function showUsers() {
+    showingMap.value = false;
+    showingUsers.value = true;
+    showingCustomers.value = false;
+    showingCompanies.value = false;
+    showingOrders.value = false;
+    showingCouriersBonusPercentage.value = false;
+    await getUsers();
+    drawer.value = false;
+}
+
+const userList = ref([]);
+
+async function getUsers() {
+    UserServices.getUser()
+        .then((data) => {
+            userList.value = data.data;
+        })
+        .catch((error) => {
+            console.log(error);
+        });
+}
 
 const newUser = ref({
     firstName: "",
     lastName: "",
     email: "",
+    role: "",
+    order: 0,
     password: "",
-    role: "",
     companyId: companyId,
 });
 
-const newCourier = ref({
-    firstName: "",
-    lastName: "",
-    email: "",
-    role: "",
-    companyId: companyId,
-});
+const isAddUser = ref(false);
+const isEditUser = ref(false);
 
-const isAddOrder = ref(false);
-const isEditOrder = ref(false);
 
-const newOrder = ref({
-  pickUpCustomerId: "",
-  dropOffCustomerId: "",
-  adminId: "",
-  courierId: "",
-  status: "",
-  requestedPickUpTime: "",
-  estimatedPickUpTime: "",
-  bill: "",
-  estimatedDropOffTime: "",
-  officeToPickUpCustomerPathId: "",
-  pickUpCustomerToDropOffCustomerPathId: "",
-  dropOffCustomerToOfficePathId: "",
-  companyId: companyId,
-});
-
-async function addOrder() {
-  isAddOrder.value = false;
-  newOrder.value.companyId = companyId;
-  newOrder.value.pickUpCustomerId = selectedPickUpCustomer.value.id;
-  newOrder.value.dropOffCustomerId = selectedDropOffCustomer.value.id;
-  newOrder.value.courierId = selectedCourier.value.id;
-  newOrder.value.adminId = user.value.id;
-  newOrder.value.status = "InProgress";
-  const pickUpLocation = getCustomerLocation(newOrder.value.pickUpCustomerId);
-  const dropOffLocation = getCustomerLocation(newOrder.value.dropOffCustomerId);
-  const pickUpNodeId = await getNodeId(pickUpLocation);
-  const dropOffNodeId = await getNodeId(dropOffLocation);
-  const officeNodeId = await getNodeId(companyAddress);
-  const officeToPickUpCustomerPathId = await getPathIdByNodeIds(officeNodeId, pickUpNodeId);
-  const pickUpCustomerToDropOffCustomerPathId = await getPathIdByNodeIds(pickUpNodeId, dropOffNodeId);
-  const dropOffCustomerToOfficePathId = await getPathIdByNodeIds(dropOffNodeId, officeNodeId);
-  newOrder.value.officeToPickUpCustomerPathId = officeToPickUpCustomerPathId;
-  newOrder.value.pickUpCustomerToDropOffCustomerPathId = pickUpCustomerToDropOffCustomerPathId;
-  newOrder.value.dropOffCustomerToOfficePathId = dropOffCustomerToOfficePathId;
-  const officeToPickUpCustomerPathDetails = getPathDetails(newOrder.value.officeToPickUpCustomerPathId);
-  const pickUpCustomerToDropOffCustomerPathDetails = getPathDetails(newOrder.value.pickUpCustomerToDropOffCustomerPathId);
-  const dropOffCustomerToOfficePathDetails = getPathDetails(newOrder.value.dropOffCustomerToOfficePathId);
-  const billMultipler = officeToPickUpCustomerPathDetails.cost + pickUpCustomerToDropOffCustomerPathDetails.cost + dropOffCustomerToOfficePathDetails.cost;
-  newOrder.value.bill = billMultipler * costPerBlock;
-  const timeFromOfficeToPickUp = officeToPickUpCustomerPathDetails.cost * timePerBlock;
-  const timeFromPickUpToDropOff = pickUpCustomerToDropOffCustomerPathDetails.cost * timePerBlock;
-  if (!newOrder.value.requestedPickUpTime) {
-    const currentTime = new Date();
-    newOrder.value.estimatedStartTime = addMinutesToTime(currentTime, 5);
-    newOrder.value.estimatedPickUpTime = addMinutesToTime(currentTime, timeFromOfficeToPickUp + 5);
-    newOrder.value.estimatedDropOffTime = addMinutesToTime(currentTime, timeFromPickUpToDropOff + 5 + timeFromOfficeToPickUp);
-  } else {
-    const requestedTime = new Date(`2023-07-20T${newOrder.value.requestedPickUpTime}`);
-    newOrder.value.estimatedStartTime = addMinutesToTime(requestedTime, -timeFromOfficeToPickUp);
-    newOrder.value.estimatedPickUpTime = addMinutesToTime(requestedTime, 0);
-    newOrder.value.requestedPickUpTime = addMinutesToTime(requestedTime, 0);
-    newOrder.value.estimatedDropOffTime = addMinutesToTime(requestedTime, timeFromPickUpToDropOff);
-  }
-
-  delete newOrder.id;
-
-  try {
-    await OrderServices.addOrder(newOrder.value);
-    snackbar.value.value = true;
-    snackbar.value.color = "green";
-    snackbar.value.text = `Order added successfully!`;
-  } catch (error) {
-    console.log(error);
-    snackbar.value.value = true;
-    snackbar.value.color = "error";
-    snackbar.value.text = error.response.data.message;
-  }
-  await getOrders();
-}
-async function addClerk() {
-    isAddClerk.value = false;
-    delete newClerk.id;
+async function addUser() {
+    isAddUser.value = false;
+    delete newUser.id;
     try {
-        newClerk.value.role = "clerk";
-        newClerk.value.password = "password";
-        await UserServices.addUser(newClerk.value);
-        snackbar.value.value = true;
-        snackbar.value.color = "success";
-        snackbar.value.text = `${newClerk.value.lastName} added successfully!`;
+        if (newUser.value.firstName === "" || newUser.value.lastName === "" || newUser.value.email === "" || newUser.value.password === "") {
+            snackbar.value.value = true;
+            snackbar.value.color = "error";
+            snackbar.value.text = "Please fill all the fields!";
+            return;
+        }
+        newUser.value.order = 0;
+        await UserServices.addUser(newUser.value);
     } catch (error) {
         console.log(error);
         snackbar.value.value = true;
         snackbar.value.color = "error";
         snackbar.value.text = error.response.data.message;
     }
-    await getClerks();
+    await getUsers();
 }
 
-async function addCourier() {
-    isAddCourier.value = false;
-    delete newCourier.id;
+function openAddUser() {
+    isAddUser.value = true;
+}
+
+function closeAddUser() {
+    isAddUser.value = false;
+}
+
+async function updateUser(selectedUser) {
+    isEditUser.value = false;
     try {
-        newCourier.value.role = "courier";
-        newCourier.value.password = "password";
-        await UserServices.addUser(newCourier.value);
+        await UserServices.updateUser(selectedUser);
         snackbar.value.value = true;
         snackbar.value.color = "success";
-        snackbar.value.text = `${newCourier.value.lastName} added successfully!`;
+        snackbar.value.text = `${newUser.value.lastName} ${newUser.value.firstName} updated successfully!`;
     } catch (error) {
         console.log(error);
         snackbar.value.value = true;
         snackbar.value.color = "error";
         snackbar.value.text = error.response.data.message;
     }
-    await getCouriers();
+    await getUsers();
 }
 
-const availableDropOffCustomers = computed(() => {
-  // Filter out the selected pick-up customer from the drop-off customer list
-  return customers.value.filter(
-    (customer) => customer.id !== selectedPickUpCustomer.value?.id
-  );
-});
+let selectedUser = ref(null);
 
-async function getAllOrders() {
-  try {
-    const response = await OrderServices.getOrders();
-    allOrders.value = response.data;
-  } catch (error) {
-    console.log(error);
-    snackbar.value.value = true;
-    snackbar.value.color = "error";
-    snackbar.value.text = error.response.data.message;
-  }
-}
-
-function closeEditOrder() {
-  isEditOrder.value = false;
-}
-
-async function updateOrder() {
-  isEditOrder.value = false;
-  try {
-    await OrderServices.updateOrder(newOrder.value);
-    snackbar.value.value = true;
-    snackbar.value.color = "success";
-    snackbar.value.text = `${newOrder.value.name} updated successfully!`;
-  } catch (error) {
-    console.log(error);
-    snackbar.value.value = true;
-    snackbar.value.color = "error";
-    snackbar.value.text = error.response.data.message;
-  }
-  await getOrders();
-}
-
-async function deleteOrder(order) {
-
-if (confirm("Are you sure you want to delete order") === true) {
-  try {
-    await OrderServices.deleteOrder(order.id);
-    snackbar.value.value = true;
-    snackbar.value.color = "success";
-    snackbar.value.text = `${order.name} deleted successfully!`;
-  } catch (error) {
-    console.log(error);
-    snackbar.value.value = true;
-    snackbar.value.color = "error";
-    snackbar.value.text = error.response.data.message;
-  }
-  await getOrders();
-}
-}
-
-function closeAddOrder() {
-  isAddOrder.value = false;
-}
-
-function openEditOrder(order) {
-  newOrder.value.id = order.id;
-  newOrder.value.pickUpCustomerId = order.pickUpCustomerId;
-  newOrder.value.dropOffCustomerId = order.dropOffCustomerId;
-  newOrder.value.bill = order.bill;
-  newOrder.value.estimatedTime = order.estimatedTime;
-  newOrder.value.bonus = order.bonus;
-  newOrder.value.status = order.status;
-  newOrder.value.pathId = order.pathId;
-  newOrder.value.courierId = order.courierId;
-  isEditOrder.value = true;
-}
-
-function openAddOrder() {
-  newOrder.value.id = undefined;
-  selectedDropOffCustomer.value = undefined;
-  selectedPickUpCustomer.value = undefined;
-  selectedCourier.value = undefined;
-  newOrder.value.requestedPickUpTime = undefined;
-  newOrder.value.bill = undefined;
-  newOrder.value.estimatedDropOffTime = undefined;
-  newOrder.value.estimatedPickUpTime = undefined;
-  newOrder.value.pickUpCustomerToDropOffCustomerPathId = undefined;
-  newOrder.value.dropOffCustomerToOfficePathId = undefined;
-  newOrder.value.officeToPickUpCustomerPathId = undefined;
-  isAddOrder.value = true;
-}
-
-
-function openAddClerk() {
-    isAddClerk.value = true;
-}
-
-function closeAddClerk() {
-    isAddClerk.value = false;
-}
-
-function openAddCourier() {
-    isAddCourier.value = true;
-}
-
-function closeAddCourier() {
-    isAddCourier.value = false;
-}
-
-async function updateClerk() {
-    isEditClerk.value = false;
-    try {
-        newClerk.value.role = "clerk";
-        await UserServices.updateUser(newClerk.value);
-        snackbar.value.value = true;
-        snackbar.value.color = "success";
-        snackbar.value.text = `${newClerk.value.lastName} updated successfully!`;
-    } catch (error) {
-        console.log(error);
-        snackbar.value.value = true;
-        snackbar.value.color = "error";
-        snackbar.value.text = error.response.data.message;
-    }
-    await getClerks();
-}
-
-async function updateCourier() {
-    isEditCourier.value = false;
-    try {
-        newCourier.value.role = "courier";
-        await UserServices.updateUser(newCourier.value);
-        snackbar.value.value = true;
-        snackbar.value.color = "success";
-        snackbar.value.text = `${newCourier.value.lastName} updated successfully!`;
-    } catch (error) {
-        console.log(error);
-        snackbar.value.value = true;
-        snackbar.value.color = "error";
-        snackbar.value.text = error.response.data.message;
-    }
-    await getCouriers();
-}
-
-function openEditClerk(user) {
-    newClerk.value.id = user.id;
-    newClerk.value.firstName = user.firstName;
-    newClerk.value.lastName = user.lastName;
-    newClerk.value.email = user.email;
-    isEditClerk.value = true;
-}
-
-function openEditUserRole(user) {
-    newUser.value.id = user.id;
-    newUser.value.firstName = user.firstName;
-    newUser.value.email = user.email;
-    newUser.value.role = user.role;
-    newUser.value.lastName = user.lastName;
-    newUser.value.password = user.password;
+function openEditUser(item) {
+    selectedUser = item;
     isEditUser.value = true;
 }
 
-function openEditCourier(user) {
-    newCourier.value.id = user.id;
-    newCourier.value.firstName = user.firstName;
-    newCourier.value.lastName = user.lastName;
-    newCourier.value.email = user.email;
-    isEditCourier.value = true;
-}
-
-async function deleteClerk(user) {
-    if (confirm("Are you sure you want to delete customer") === true) {
-        try {
-            await UserServices.deleteUser(user);
-            snackbar.value.value = true;
-            snackbar.value.color = "success";
-            snackbar.value.text = `${user.lastName} deleted successfully!`;
-        } catch (error) {
-            console.log(error);
-            snackbar.value.value = true;
-            snackbar.value.color = "error";
-            snackbar.value.text = error.response.data.message;
-        }
-
-    }
-    await getClerks();
-}
-
-async function deleteCouriers(user) {
-
-    if (confirm("Are you sure you want to delete customer") === true) {
-        try {
-            await UserServices.deleteUser(user);
-            snackbar.value.value = true;
-            snackbar.value.color = "success";
-            snackbar.value.text = `${user.lastName} deleted successfully!`;
-        } catch (error) {
-            console.log(error);
-            snackbar.value.value = true;
-            snackbar.value.color = "error";
-            snackbar.value.text = error.response.data.message;
-        }
-
-    }
-    await getCouriers();
-}
-
-function closeEditClerk() {
-    isEditClerk.value = false;
-}
-
-function closeEditUserRole() {
+function closeEditUser() {
     isEditUser.value = false;
 }
 
-function closeEditCourier() {
-    isEditCourier.value = false;
-}
+
 
 const isAddCustomer = ref(false);
 const isEditCustomer = ref(false);
+const isAddNode = ref(false);
+const isAddEdge = ref(false);
 const isEditNode = ref(false);
 const isEditEdge = ref(false);
 const isEditCompany = ref(false);
@@ -735,30 +749,31 @@ const newCompany = ref({
     bonusPercentage: "",
 });
 
-async function addCustomer() {
-    isAddCustomer.value = false;
-    delete newCustomer.id;
-    try {
-        await CustomerServices.addCustomer(newCustomer.value);
-        snackbar.value.value = true;
-        snackbar.value.color = "success";
-        snackbar.value.text = `${newCustomer.value.name} added successfully!`;
-    } catch (error) {
-        console.log(error);
-        snackbar.value.value = true;
-        snackbar.value.color = "error";
-        snackbar.value.text = error.response.data.message;
-    }
-    await getCustomers();
-}
-
 function openAddCustomer() {
     isAddCustomer.value = true;
+}
+
+function openAddNode() {
+    isAddNode.value = true;
+}
+
+function openAddEdge() {
+    isAddEdge.value = true;
 }
 
 function closeAddCustomer() {
     isAddCustomer.value = false;
 }
+
+function closeAddNode() {
+    isAddNode.value = false;
+}
+
+function closeAddEdge() {
+    isAddEdge.value = false;
+}
+
+
 
 function openEditCustomer(customer) {
     newCustomer.value.id = customer.id;
@@ -779,8 +794,8 @@ function openEditNode(node) {
 function openEditEdge(edge) {
     newEdge.value.id = edge.id;
     newEdge.value.cost = edge.cost;
-    newEdge.value.sourcenodeid = edge.sourcenodeid;
-    newEdge.value.targetnodeid = edge.targetnodeid;
+    newEdge.value.sourceNodeId = edge.sourceNodeId;
+    newEdge.value.targetNodeId = edge.targetNodeId;
     isEditEdge.value = true;
 }
 
@@ -810,6 +825,62 @@ async function deleteCustomer(customer) {
             snackbar.value.text = error.response.data.message;
         }
         await getCustomers();
+    }
+}
+
+async function deleteUser(user) {
+
+    if (confirm("Are you sure you want to delete user") === true) {
+        try {
+            await UserServices.deleteUser(user);
+            snackbar.value.value = true;
+            snackbar.value.color = "success";
+            snackbar.value.text = `${user.firstName} deleted successfully!`;
+        } catch (error) {
+            console.log(error);
+            snackbar.value.value = true;
+            snackbar.value.color = "error";
+            snackbar.value.text = error.response.data.message;
+        }
+        await getUsers();
+    }
+}
+
+
+
+async function deleteNode(node) {
+
+    if (confirm("Are you sure you want to delete node") === true) {
+        try {
+            await NodeServices.deleteNode(node.id);
+            snackbar.value.value = true;
+            snackbar.value.color = "success";
+            snackbar.value.text = `${node.name} deleted successfully!`;
+        } catch (error) {
+            console.log(error);
+            snackbar.value.value = true;
+            snackbar.value.color = "error";
+            snackbar.value.text = error.response.data.message;
+        }
+        await getNodes();
+    }
+}
+
+async function deleteEdge(edge) {
+
+    if (confirm("Are you sure you want to delete edge") === true) {
+        try {
+            await EdgeServices.deleteEdge(edge.id);
+            snackbar.value.value = true;
+            snackbar.value.color = "success";
+            snackbar.value.text = `Edge deleted successfully!`;
+        } catch (error) {
+            console.log(error);
+            snackbar.value.value = true;
+            snackbar.value.color = "error";
+            snackbar.value.text = error.response.data.message;
+        }
+        await getEdges();
     }
 }
 
@@ -898,52 +969,287 @@ async function showProfile() {
 }
 
 async function getPathIdByNodeIds(sourceNodeId, targetNodeId) {
-  try {
-    const response = await PathServices.getPathBySourceAndTarget(sourceNodeId, targetNodeId);
-    const pathDetails = response.data;
-    const pathId = pathDetails?.id;
-    return pathId;
-  } catch (error) {
-    console.error("Error retrieving pathId:", error);
-    return null;
-  }
+    try {
+        const response = await PathServices.getPathBySourceAndTarget(sourceNodeId, targetNodeId);
+        const pathDetails = response.data;
+        const pathId = pathDetails?.id;
+        return pathId;
+    } catch (error) {
+        console.error("Error retrieving pathId:", error);
+        return null;
+    }
 }
 
 function getCustomerLocation(customerId) {
-  const customer = customers.value.find((c) => c.id === customerId);
-  if (customer) {
-    return customer.location;
-  } else {
-    return "Customer not found";
-  }
+    const customer = customers.value.find((c) => c.id === customerId);
+    if (customer) {
+        return customer.location;
+    } else {
+        return "Customer not found";
+    }
 }
 
+function formatCourierName(courier) {
+    return `${courier.firstName} ${courier.lastName}`;
+}
 
-async function updateUserEditRole() {
-    isEditUser.value = false;
+function closeSnackBar() {
+    snackbar.value.value = false;
+}
+
+const selectedFromDate = ref(null);
+const selectedToDate = ref(null);
+const customerOrders = ref([]);
+const courierOrders = ref([]);
+
+async function getOrdersForCustomer(customer) {
     try {
-        newUser.value.password = "password";
-        await UserServices.updateUser(newUser.value);
-        snackbar.value.value = true;
-        snackbar.value.color = "success";
-        snackbar.value.text = `${newUser.value.lastName} updated successfully!`;
+        if (customer !== null && customer.id !== null) {
+            const response = await OrderServices.getOrdersByCustomerId(customer.id);
+            customerOrders.value = response.data;
+        }
     } catch (error) {
         console.log(error);
         snackbar.value.value = true;
         snackbar.value.color = "error";
         snackbar.value.text = error.response.data.message;
     }
-    await getUsers();
 }
 
-function formatCourierName(courier) {
-  return `${courier.firstName} ${courier.lastName}`;
+async function getOrdersForCouriers(courier) {
+    try {
+        if (courier !== null && courier.id !== null) {
+            const response = await OrderServices.getOrdersByCourierIdCompleted(courier.id);
+            courierOrders.value = response.data;
+        }
+    } catch (error) {
+        console.log(error);
+        snackbar.value.value = true;
+        snackbar.value.color = "error";
+        snackbar.value.text = error.response.data.message;
+    }
 }
 
-function closeSnackBar() {
-    snackbar.value.value = false;
+async function downloadBonus(courier) {
+
+    if (!selectedFromDate.value || !selectedToDate.value) {
+        snackbar.value.value = true;
+        snackbar.value.color = "error";
+        snackbar.value.text = "Please select both From Date and To Date.";
+    }
+    else {
+        await getOrdersForCouriers(courier);
+
+        if (courierOrders.value && courierOrders.value.length > 0) {
+            const columns = [
+                { title: "PickUpCustomer", dataKey: "pickUpCustomer.name" },
+                { title: "DropOffCustomer", dataKey: "dropOffCustomer.name" },
+                { title: "Bonus Amount", dataKey: "bonus" },
+            ];
+
+            const doc = new jsPDF();
+            doc.text("Monthly Bonus", 10, 10);
+
+            const fromDate = new Date(selectedFromDate.value);
+            const toDate = new Date(selectedToDate.value);
+
+            const data = courierOrders.value
+                .filter((order) => {
+                    const orderDate = new Date(order.createdAt);
+                    return orderDate >= fromDate && orderDate <= toDate;
+                })
+                .map((order) => ({
+                    "pickUpCustomer.name": order.pickUpCustomer.name,
+                    "dropOffCustomer.name": order.dropOffCustomer.name,
+                    "bonus": order.bonus,
+                }));
+
+            const total = data.reduce((sum, order) => sum + order.bonus, 0);
+
+            data.push({
+                "pickUpCustomer.nam": "",
+                "dropOffCustomer.name": "Total",
+                "bonus": total,
+            });
+
+            doc.autoTable({
+                columns: columns,
+                body: data,
+                startY: 20,
+            });
+
+            doc.save(courier.firstName + courier.lastName + "_" + selectedFromDate.value + "_" + selectedToDate.value + ".pdf");
+        }
+        else {
+            snackbar.value.value = true;
+            snackbar.value.color = "success";
+            snackbar.value.text = `No Orders For this Courier`;
+        }
+    }
 }
+
+function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function generatePaths() {
+    try {
+        await PathServices.deleteAllPaths();
+
+        const nodeList = ref([]);
+        async function getNodes() {
+            try {
+                const data = await NodeServices.getNodes();
+                nodeList.value = data.data;
+            } catch (error) {
+                console.log(error);
+            }
+        }
+
+        const edgeList = ref([]);
+        async function getEdges() {
+            try {
+                const data = await EdgeServices.getEdges();
+                edgeList.value = data.data;
+            } catch (error) {
+                console.log(error);
+            }
+        }
+
+        const graph = {};
+        await getNodes();
+
+        nodeList.value.forEach((node) => {
+            graph[node.name] = {};
+        });
+
+        await getEdges();
+
+        edgeList.value.forEach((edge) => {
+            const sourceNode = nodeList.value.find((node) => node.id === edge.sourceNodeId);
+            const targetNode = nodeList.value.find((node) => node.id === edge.targetNodeId);
+
+            if (sourceNode && targetNode) {
+                graph[sourceNode.name][targetNode.name] = edge.cost;
+            }
+        });
+
+        await wait(1000);
+
+        const result = dijkstra(graph);
+        const allDistances = result.allDistances;
+        const allParents = result.allParents;
+
+        for (let sourceVertex in allDistances) {
+            const distances = allDistances[sourceVertex];
+            const parents = allParents[sourceVertex];
+            for (let vertex in distances) {
+                let sourceid = null;
+                let targetid = null;
+                const sourceIdPromise = NodeServices.getIdFromName(sourceVertex);
+                const targetIdPromise = NodeServices.getIdFromName(vertex);
+                const path = getPath(parents, vertex);
+                const cost = distances[vertex];
+
+                const sourceId = await sourceIdPromise;
+                const targetId = await targetIdPromise;
+
+                sourceid = sourceId;
+                targetid = targetId;
+
+                await PathServices.addPath({
+                    path: path,
+                    cost: cost,
+                    sourceid: sourceid,
+                    targetid: targetid,
+                    companyId: 1,
+                });
+            }
+        }
+        snackbar.value.value = true;
+        snackbar.value.color = "success";
+        snackbar.value.text = `All Paths Regenerated`;
+    } catch (error) {
+        console.log(error);
+        snackbar.value.value = true;
+        snackbar.value.color = "error";
+        snackbar.value.text = error.response.data.message;
+    }
+
+
+}
+
+function getPath(parents, destination) {
+    const path = [];
+    let currentVertex = destination;
+    while (currentVertex !== null) {
+        path.unshift(currentVertex);
+        currentVertex = parents[currentVertex];
+    }
+    return path.toString();
+}
+
+function dijkstra(graph) {
+    const vertices = Object.keys(graph);
+    const allDistances = {};
+    const allParents = {};
+
+    for (let i = 0; i < vertices.length; i++) {
+        const sourceVertex = vertices[i];
+        const distances = {};
+        const parents = {};
+        const visited = new Set();
+
+        for (let j = 0; j < vertices.length; j++) {
+            const vertex = vertices[j];
+            if (vertex === sourceVertex) {
+                distances[vertex] = 0;
+            } else {
+                distances[vertex] = Infinity;
+            }
+            parents[vertex] = null;
+        }
+
+        function vertexWithMinDistance(distances, visited) {
+            let minDistance = Infinity;
+            let minVertex = null;
+            for (let vertex in distances) {
+                if (!visited.has(vertex) && distances[vertex] < minDistance) {
+                    minDistance = distances[vertex];
+                    minVertex = vertex;
+                }
+            }
+            return minVertex;
+        }
+
+        let currentVertex = vertexWithMinDistance(distances, visited);
+
+        while (currentVertex !== null) {
+            const distance = distances[currentVertex];
+            const neighbors = graph[currentVertex];
+
+            for (let neighbor in neighbors) {
+                const edgeWeight = neighbors[neighbor];
+                const newDistance = distance + edgeWeight;
+
+                if (distances[neighbor] > newDistance) {
+                    distances[neighbor] = newDistance;
+                    parents[neighbor] = currentVertex;
+                }
+            }
+
+            visited.add(currentVertex);
+            currentVertex = vertexWithMinDistance(distances, visited);
+        }
+
+        allDistances[sourceVertex] = distances;
+        allParents[sourceVertex] = parents;
+    }
+    return { allDistances, allParents };
+}
+
 </script>
+
 <template>
     <v-app-bar color="teal" prominent>
         <v-app-bar-nav-icon variant="text" @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
@@ -959,12 +1265,9 @@ function closeSnackBar() {
             <v-list-item prepend-icon="mdi-account-details" @click="showCompanies()" title="Company Info"></v-list-item>
             <v-list-item prepend-icon="mdi-account-details" @click="showUsers()" title="Users"></v-list-item>
             <v-list-item prepend-icon="mdi-account-details" @click="showOrders()" title="Orders"></v-list-item>
-        <v-list-item prepend-icon="mdi-account-group" @click="showAllOrders()" title="All Orders"></v-list-item>
             <v-list-item prepend-icon="mdi-account-group" @click="showCustomers()" title="Customers"></v-list-item>
-            <v-list-item prepend-icon="mdi-face-agent" @click="showClerks()" title="Clerks"></v-list-item>
-            <v-list-item prepend-icon="mdi-bike" @click="showCouriers()" title="Couriers"></v-list-item>
-            <v-list-item prepend-icon="mdi-map" @click="showMapNodes()" title="MapPlaces"></v-list-item>
-            <v-list-item prepend-icon="mdi-map" @click="showMapEdges()" title="MapPaths"></v-list-item>
+            <v-list-item prepend-icon="mdi-map" @click="showMap()" title="Map Details"></v-list-item>
+            <v-list-item prepend-icon="mdi-map" @click="showCouriersBonusPercentage()" title="Courier Bonus"></v-list-item>
             <v-list-item style="color: red;" @click="logout()" prepend-icon="mdi-logout-variant"
                 title="Logout"></v-list-item>
         </v-list>
@@ -972,32 +1275,40 @@ function closeSnackBar() {
 
     <template v-if="showingCompanies">
         <v-container>
-            <v-card-title>
-                <h2>Company Info</h2>
-            </v-card-title>
-            <v-card class="rounded-lg elevation-5 mb-8" v-for="company in companies" :key="company.id">
-                <v-card-title class="headline">
-                    <v-row align="center">
-                        <v-col cols="10">
-                            <v-chip class="ma-2" color="green" label>
-                                {{ company.name }}
-                            </v-chip>
-                        </v-col>
-                        <v-col class="d-flex justify-end">
-                            <v-card-actions>
-                                <v-spacer></v-spacer>
-                                <v-icon size="small" icon="mdi-pencil" @click="openEditCompany(company)"></v-icon>
-                            </v-card-actions>
-                        </v-col>
-                    </v-row>
-                </v-card-title>
-                <v-card-text class="body-1">
-                    <strong>Location:</strong> {{ company.address }} <br>
-                    <strong>Cost Per Block:</strong> $ {{ company.costPerBlock }}<br>
-                    <strong>Time Per Block:</strong> {{ company.timePerBlock }} minutes<br>
-                    <strong>Bonus Percentage:</strong> {{ company.bonusPercentage }} %
-                </v-card-text>
-            </v-card>
+            <v-row>
+                <v-col cols="12">
+                    <v-card-title class="mx-10 my-3 py-3">
+                        <v-row>
+                            <h2>Company Info</h2>
+                            <v-spacer></v-spacer>
+                            <v-btn variant="flat" color="teal" text @click="openGenerateReport()">Generate Report</v-btn>
+                        </v-row>
+                    </v-card-title>
+                    <v-card class="rounded-lg elevation-5 mb-8" v-for="company in companies" :key="company.id">
+                        <v-card-title class="headline">
+                            <v-row align="center">
+                                <v-col cols="10">
+                                    <v-chip class="ma-2" color="green" label>
+                                        {{ company.name }}
+                                    </v-chip>
+                                </v-col>
+                                <v-col class="d-flex justify-end">
+                                    <v-card-actions>
+                                        <v-spacer></v-spacer>
+                                        <v-icon size="small" icon="mdi-pencil" @click="openEditCompany(company)"></v-icon>
+                                    </v-card-actions>
+                                </v-col>
+                            </v-row>
+                        </v-card-title>
+                        <v-card-text class="body-1">
+                            <strong>Location:</strong> {{ company.address }} <br>
+                            <strong>Cost Per Block:</strong> $ {{ company.costPerBlock }}<br>
+                            <strong>Time Per Block:</strong> {{ company.timePerBlock }} minutes<br>
+                            <strong>Bonus Percentage:</strong> {{ company.bonusPercentage }} %
+                        </v-card-text>
+                    </v-card>
+                </v-col>
+            </v-row>
         </v-container>
     </template>
 
@@ -1009,17 +1320,19 @@ function closeSnackBar() {
                         <v-row>
                             <h2>Users</h2>
                             <v-spacer></v-spacer>
+                            <v-btn variant="flat" color="teal" prepend-icon="mdi-plus" text @click="openAddUser()">Add
+                                User</v-btn>
                         </v-row>
                     </v-card-title>
                     <v-card v-if="userList.length > 0" class="rounded-lg elevation-5">
-
                         <v-table class="rounded-lg elevation-5">
                             <thead>
                                 <tr>
                                     <th class="text-left">Name</th>
                                     <th class="text-left">Eamil</th>
                                     <th class="text-left">Role</th>
-                                    <th class="text-left">Edit Role</th>
+                                    <th class="text-left">Edit</th>
+                                    <th class="text-left">Delete</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1028,91 +1341,10 @@ function closeSnackBar() {
                                     <td>{{ item.email }}</td>
                                     <td>{{ item.role }}</td>
                                     <td>
-                                        <v-icon size="small" icon="mdi-pencil" @click="openEditUserRole(item)"></v-icon>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </v-table>
-                    </v-card>
-                </v-col>
-            </v-row>
-        </v-container>
-    </template>
-
-    <template v-if="showingClerks">
-        <v-container>
-            <v-row>
-                <v-col cols="12">
-                    <v-card-title class="mx-10 my-3 py-3">
-                        <v-row>
-                            <h2>Clerks</h2>
-                            <v-spacer></v-spacer>
-                            <v-btn variant="flat" color="teal" prepend-icon="mdi-plus" text @click="openAddClerk()">Add
-                                Clerks</v-btn>
-                        </v-row>
-                    </v-card-title>
-                    <v-card v-if="clerks.length > 0" class="rounded-lg elevation-5">
-
-                        <v-table class="rounded-lg elevation-5">
-                            <thead>
-                                <tr>
-                                    <th class="text-left">Name</th>
-                                    <th class="text-left">Eamil</th>
-                                    <th class="text-left">Edit</th>
-                                    <th class="text-left">Delete</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="item in clerks" :key="item.id">
-                                    <td>{{ item.lastName }} {{ item.firstName }}</td>
-                                    <td>{{ item.email }}</td>
-                                    <td>
-                                        <v-icon size="small" icon="mdi-pencil" @click="openEditClerk(item)"></v-icon>
+                                        <v-icon size="small" icon="mdi-pencil" @click="openEditUser(item)"></v-icon>
                                     </td>
                                     <td>
-                                        <v-icon size="small" icon="mdi-delete" @click="deleteClerk(item)"></v-icon>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </v-table>
-                    </v-card>
-                </v-col>
-            </v-row>
-        </v-container>
-    </template>
-
-    <template v-if="showingCouriers">
-        <v-container>
-            <v-row>
-                <v-col cols="12">
-                    <v-card-title class="mx-10 my-3 py-3">
-                        <v-row>
-                            <h2>Couriers</h2>
-                            <v-spacer></v-spacer>
-                            <v-btn variant="flat" color="teal" prepend-icon="mdi-plus" text @click="openAddCourier()">Add
-                                Courier </v-btn>
-                        </v-row>
-                    </v-card-title>
-                    <v-card v-if="couriers.length > 0" class="rounded-lg elevation-5">
-
-                        <v-table class="rounded-lg elevation-5">
-                            <thead>
-                                <tr>
-                                    <th class="text-left">Name</th>
-                                    <th class="text-left">Eamil</th>
-                                    <th class="text-left">Edit</th>
-                                    <th class="text-left">Delete</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="item in couriers" :key="item.id">
-                                    <td>{{ item.lastName }} {{ item.firstName }}</td>
-                                    <td>{{ item.email }}</td>
-                                    <td>
-                                        <v-icon size="small" icon="mdi-pencil" @click="openEditCourier(item)"></v-icon>
-                                    </td>
-                                    <td>
-                                        <v-icon size="small" icon="mdi-delete" @click="deleteCouriers(item)"></v-icon>
+                                        <v-icon size="small" icon="mdi-delete" @click="deleteUser(item)"></v-icon>
                                     </td>
                                 </tr>
                             </tbody>
@@ -1144,6 +1376,7 @@ function closeSnackBar() {
                                     <th class="text-left">Number</th>
                                     <th class="text-left">Edit</th>
                                     <th class="text-left">Delete</th>
+                                    <th class="text-left">Download Bill</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1156,38 +1389,12 @@ function closeSnackBar() {
                                     <td>
                                         <v-icon size="small" icon="mdi-delete" @click="deleteCustomer(item)"></v-icon>
                                     </td>
-                                </tr>
-                            </tbody>
-                        </v-table>
-                    </v-card>
-                </v-col>
-            </v-row>
-        </v-container>
-    </template>
-
-    <template v-if="showingMapNodes">
-        <v-container>
-            <v-row>
-                <v-col cols="12">
-                    <v-card-title class="mx-10 my-3 py-3">
-                        <v-row>
-                            <h2>Places</h2>
-                        </v-row>
-                    </v-card-title>
-                    <v-card v-if="nodes.length > 0" class="rounded-lg elevation-5">
-
-                        <v-table class="rounded-lg elevation-5">
-                            <thead>
-                                <tr>
-                                    <th class="text-left">PlaceName</th>
-                                    <th class="text-left">Edit</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="item in nodes" :key="item.id">
-                                    <td>{{ item.name }}</td>
                                     <td>
-                                        <v-icon size="small" icon="mdi-pencil" @click="openEditNode(item)"></v-icon>
+                                        <v-btn icon size="large" @click="openGenerateBill(item)" variant="text">
+                                            <v-icon>
+                                                mdi-download
+                                            </v-icon>
+                                        </v-btn>
                                     </td>
                                 </tr>
                             </tbody>
@@ -1198,115 +1405,216 @@ function closeSnackBar() {
         </v-container>
     </template>
 
-    <template v-if="showingMapEdges">
+    <template v-if="showingMap">
         <v-container>
             <v-row>
                 <v-col cols="12">
-                    <v-card-title class="mx-10 my-3 py-3">
+                    <v-card-text>
                         <v-row>
-                            <h2>Paths</h2>
+                            <h1>Map Details</h1>
+                            <v-spacer></v-spacer>
+                            <v-btn variant="flat" color="teal" text @click="generatePaths()">Generate Paths</v-btn>
                         </v-row>
-                    </v-card-title>
-                    <v-card v-if="edges.length > 0" class="rounded-lg elevation-5">
-                        <v-table class="rounded-lg elevation-5">
-                            <thead>
-                                <tr>
-                                    <th class="text-left">FromPlace To ToPlace</th>
-                                    <th class="text-left">Distance</th>
-                                    <th class="text-left">Edit</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="item in edges" :key="item.id">
-                                    <td><strong>{{ item.sourceNode.name }}</strong> To <strong>{{
-                                        item.targetNode.name }}</strong></td>
-                                    <td>{{ item.cost }} mile</td>
-                                    <td>
-                                        <v-icon size="small" icon="mdi-pencil" @click="openEditEdge(item)"></v-icon>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </v-table>
-                    </v-card>
+                    </v-card-text>
                 </v-col>
             </v-row>
+        </v-container>
+
+        <v-container>
+            <div class="d-flex align-center flex-column">
+                <v-card class="rounded-lg elevation-5 mb-8" width="1200" @click="showPlaces = !showPlaces">
+                    <v-row align="center">
+                        <v-col cols="10">
+                            <v-card-title class="headline">
+                                <h3>Places</h3>
+                            </v-card-title>
+                            <v-card-text class="body-1">
+                                Click To See All Places
+                            </v-card-text>
+                        </v-col>
+                        <v-col cols="2">
+                            <v-btn variant="flat" color="teal" text @click="openAddNode()">Add Place</v-btn>
+                        </v-col>
+                    </v-row>
+                    <v-expand-transition>
+                        <v-card-text class="pt-0" v-if="nodes.length > 0" v-show="showPlaces">
+                            <v-table>
+                                <thead>
+                                    <tr>
+                                        <th class="text-left">Place Name</th>
+                                        <th class="text-left">Edit</th>
+                                        <th class="text-left">Delete</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="item in nodes" :key="item.id">
+                                        <td>{{ item.name }}</td>
+                                        <td>
+                                            <v-icon size="small" icon="mdi-pencil" @click="openEditNode(item)"></v-icon>
+                                        </td>
+                                        <td>
+                                            <v-icon size="small" icon="mdi-delete" @click="deleteNode(item)"></v-icon>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </v-table>
+                        </v-card-text>
+                    </v-expand-transition>
+                </v-card>
+            </div>
+        </v-container>
+
+        <v-container>
+            <div class="d-flex align-center flex-column">
+                <v-card class="rounded-lg elevation-5 mb-8" width="1200" @click="showPaths = !showPaths">
+                    <v-row align="center">
+                        <v-col cols="10">
+                            <v-card-title class="headline">
+                                <h3>Paths</h3>
+                            </v-card-title>
+                            <v-card-text class="body-1">
+                                Click To See All Paths
+                            </v-card-text>
+                        </v-col>
+                        <v-col cols="2">
+                            <v-btn variant="flat" color="teal" text @click="openAddEdge()">Add Path</v-btn>
+                        </v-col>
+                    </v-row>
+                    <v-expand-transition>
+                        <v-card-text class="pt-0" v-if="edges.length > 0" v-show="showPaths">
+                            <v-table>
+                                <thead>
+                                    <tr>
+                                        <th class="text-left">From Place To To Place</th>
+                                        <th class="text-left">Distance</th>
+                                        <th class="text-left">Edit</th>
+                                        <th class="text-left">Delete</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="item in edges" :key="item.id">
+                                        <td><strong>{{ item.sourceNode.name }}</strong> To <strong>{{ item.targetNode.name
+                                        }}</strong></td>
+                                        <td>{{ item.cost }} mile</td>
+                                        <td>
+                                            <v-icon size="small" icon="mdi-pencil" @click="openEditEdge(item)"></v-icon>
+                                        </td>
+                                        <td>
+                                            <v-icon size="small" icon="mdi-delete" @click="deleteEdge(item)"></v-icon>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </v-table>
+                        </v-card-text>
+                    </v-expand-transition>
+                </v-card>
+            </div>
         </v-container>
     </template>
 
     <template v-if="showingOrders">
         <v-container>
-          <v-row>
-            <v-col cols="12">
-              <v-card-title class="mx-10 my-3 py-3">
-                <v-row>
-                  <h2>Orders</h2>
-                  <v-spacer></v-spacer>
-                  <v-btn variant="flat" color="teal" prepend-icon="mdi-plus" text @click="openAddOrder()">Add
-                    Order</v-btn>
-                </v-row>
-              </v-card-title>
-              <v-card-text v-if="orders.length > 0">
-                <OrderCard v-for="order in orders" :key="order.id" :order="order" />
-              </v-card-text>
-            </v-col>
-          </v-row>
+            <v-row>
+                <v-col cols="12">
+                    <v-card-title class="mx-10 my-3 py-3">
+                        <v-row>
+                            <h2>Orders</h2>
+                            <v-spacer></v-spacer>
+                            <v-btn variant="flat" color="teal" prepend-icon="mdi-plus" text @click="openAddOrder()">
+                                Add Order
+                            </v-btn>
+                        </v-row>
+                    </v-card-title>
+                    <v-card-text v-if="allOrders.length > 0">
+                        <template v-for="order in allOrders" :key="order.id">
+                            <v-row>
+                                <v-col cols="12">
+                                    <div style="display: grid; grid-template-columns: 1fr auto; align-items: center;">
+                                        <OrderCard :order="order" />
+                                        <v-container class="rounded-lg elevation-0 mb-8" v-if="order.status === 'Created'"
+                                            style="display: flex; justify-content: flex-end;">
+                                            <v-btn icon size="x-large" @click="deleteOrder(order)" variant="text">
+                                                <v-icon>
+                                                    mdi-delete
+                                                </v-icon>
+                                            </v-btn>
+                                        </v-container>
+                                    </div>
+                                </v-col>
+                            </v-row>
+                        </template>
+                    </v-card-text>
+                </v-col>
+            </v-row>
         </v-container>
-      </template>
+    </template>
 
-      <template v-if="showingAllOrders">
+    <template v-if="showingCouriersBonusPercentage">
         <v-container>
-          <v-row>
-            <v-col cols="12">
-              <v-card-title class="mx-10 my-3 py-3">
-                <v-row>
-                  <h2>All Orders</h2>
-                </v-row>
-              </v-card-title>
-              <v-card-text v-if="allOrders.length > 0">
-                <OrderCard v-for="order in allOrders" :key="order.id" :order="order" />
-              </v-card-text>
-            </v-col>
-          </v-row>
+            <v-row>
+                <v-col cols="12">
+                    <v-card-title class="mx-10 my-3 py-3">
+                        <v-row>
+                            <h2>Couriers</h2>
+                            <v-spacer></v-spacer>
+                            <v-container>
+                                <v-row>
+                                    <v-col cols="6">
+                                        <v-text-field v-model="selectedFromDate" label="From Date"
+                                            type="date"></v-text-field>
+                                    </v-col>
+                                    <v-col cols="6">
+                                        <v-text-field v-model="selectedToDate" label="To Date" type="date"></v-text-field>
+                                    </v-col>
+                                </v-row>
+                            </v-container>
+                        </v-row>
+                    </v-card-title>
+                    <v-card v-if="couriers.length > 0" class="rounded-lg elevation-5">
+
+                        <v-table class="rounded-lg elevation-5">
+                            <thead>
+                                <tr>
+                                    <th class="text-left">FirstName</th>
+                                    <th class="text-left">LastName</th>
+                                    <th class="text-left">Download Bill</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="item in couriers" :key="item.id">
+                                    <td>{{ item.firstName }}</td>
+                                    <td>{{ item.lastName }}</td>
+                                    <td>
+                                        <v-btn icon size="large" @click="downloadBonus(item)" variant="text">
+                                            <v-icon>
+                                                mdi-download
+                                            </v-icon>
+                                        </v-btn>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </v-table>
+                    </v-card>
+                </v-col>
+            </v-row>
         </v-container>
-      </template>
+    </template>
 
-    <v-dialog persistent :model-value="isAddCourier || isEditCourier" width="500">
+    <v-dialog persistent v-model="isAddUser" width="800">
         <v-card class="rounded-lg elevation-5">
-            <v-card-title class="headline mb-2">
-                {{ isAddCourier ? "Add Courier" : isEditCourier ? "Edit Courier" : "" }}
-            </v-card-title>
+            <v-card-title class="headline mb-2">Create Account </v-card-title>
             <v-card-text>
-                <v-text-field v-model="newCourier.lastName" label="LastName" required></v-text-field>
-                <v-text-field v-model="newCourier.firstName" label="FirstName" required></v-text-field>
-                <v-text-field v-model="newCourier.email" label="Eamil" required></v-text-field>
+                <v-text-field v-model="newUser.firstName" label="First Name" required></v-text-field>
+                <v-text-field v-model="newUser.lastName" label="Last Name" required></v-text-field>
+                <v-text-field v-model="newUser.email" label="Email" required></v-text-field>
+                <v-text-field v-model="newUser.password" label="Password" type="password" required></v-text-field>
+                <v-select v-model="newUser.role" label="Role" :items="['admin', 'courier', 'clerk']" required></v-select>
             </v-card-text>
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn text
-                    @click="isAddCourier ? closeAddCourier() : isEditCourier ? closeEditCourier() : false">Close</v-btn>
-                <v-btn variant="flat" color="teal"
-                    @click="isAddCourier ? addCourier() : isEditCourier ? updateCourier() : false">
-                    {{ isAddCourier ? "Add Courier" : isEditCourier ? "Update Courier" : "" }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
-
-    <v-dialog persistent :model-value="isAddClerk || isEditClerk" width="500">
-        <v-card class="rounded-lg elevation-5">
-            <v-card-title class="headline mb-2">
-                {{ isAddClerk ? "Add Clerk" : isEditClerk ? "Edit Clerk" : "" }}
-            </v-card-title>
-            <v-card-text>
-                <v-text-field v-model="newClerk.lastName" label="Last Name" required></v-text-field>
-                <v-text-field v-model="newClerk.firstName" label="First Name" required></v-text-field>
-                <v-text-field v-model="newClerk.email" label="Email" required></v-text-field>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn text @click="isAddClerk ? closeAddClerk() : isEditClerk ? closeEditClerk() : false">Close</v-btn>
-                <v-btn variant="flat" color="teal" @click="isAddClerk ? addClerk() : isEditClerk ? updateClerk() : false">
-                    {{ isAddClerk ? "Add Clerk" : isEditClerk ? "Update Clerk" : "" }}
+                <v-btn text @click="isAddUser ? closeAddUser() : false">Close</v-btn>
+                <v-btn variant="flat" color="teal" @click="isAddUser ? addUser() : false">
+                    {{ isAddUser ? "Add User" : "" }}
                 </v-btn>
             </v-card-actions>
         </v-card>
@@ -1318,13 +1626,71 @@ function closeSnackBar() {
                 {{ isEditUser ? "Edit User" : "" }}
             </v-card-title>
             <v-card-text>
-                <v-select v-model="newUser.role" label="Role" :items="['admin', 'courier', 'clerk']" required></v-select>
+                <v-text-field v-model="selectedUser.lastName" label="Last Name" required></v-text-field>
+                <v-text-field v-model="selectedUser.firstName" label="First Name" required></v-text-field>
+                <v-text-field v-model="selectedUser.email" label="Email" required></v-text-field>
+                <v-select v-model="selectedUser.role" label="Role" :items="['admin', 'courier', 'clerk']"
+                    required></v-select>
             </v-card-text>
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn text @click="isEditUser ? closeEditUserRole() : false">Close</v-btn>
-                <v-btn variant="flat" color="teal" @click="isEditUser ? updateUserEditRole() : false">
-                    {{ isEditUser ? "Update User Role" : "" }}
+                <v-btn text @click=" isEditUser ? closeEditUser() : false">Close</v-btn>
+                <v-btn variant="flat" color="teal" @click="isEditUser ? updateUser(selectedUser) : false">
+                    {{ isEditUser ? "Update User" : "" }}
+                </v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
+
+    <v-dialog persistent :model-value="isGenerateReport" width="500">
+        <v-card class="rounded-lg elevation-5">
+            <v-card-title class="headline mb-2">
+                {{ isGenerateReport ? "Generate Report" : "" }}
+            </v-card-title>
+            <v-card-text>
+                <v-container>
+                    <v-row>
+                        <v-col cols="6">
+                            <v-text-field v-model="selectedFromDate" label="From Date" type="date"></v-text-field>
+                        </v-col>
+                        <v-col cols="6">
+                            <v-text-field v-model="selectedToDate" label="To Date" type="date"></v-text-field>
+                        </v-col>
+                    </v-row>
+                </v-container>
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn text @click="isGenerateReport ? closeGenerateReport() : false">Close</v-btn>
+                <v-btn variant="flat" color="teal" @click="isGenerateReport ? generateReport() : false">
+                    {{ isGenerateReport ? "Generate Report" : "" }}
+                </v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
+
+    <v-dialog persistent :model-value="isGenerateBill" width="500">
+        <v-card class="rounded-lg elevation-5">
+            <v-card-title class="headline mb-2">
+                {{ isGenerateBill ? "Generate Bill" : "" }}
+            </v-card-title>
+            <v-card-text>
+                <v-container>
+                    <v-row>
+                        <v-col cols="6">
+                            <v-text-field v-model="selectedFromDate" label="From Date" type="date"></v-text-field>
+                        </v-col>
+                        <v-col cols="6">
+                            <v-text-field v-model="selectedToDate" label="To Date" type="date"></v-text-field>
+                        </v-col>
+                    </v-row>
+                </v-container>
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn text @click="isGenerateBill ? closeGenerateBill() : false">Close</v-btn>
+                <v-btn variant="flat" color="teal" @click="isGenerateBill ? generateBill() : false">
+                    {{ isGenerateBill ? "Generate Bill" : "" }}
                 </v-btn>
             </v-card-actions>
         </v-card>
@@ -1354,66 +1720,72 @@ function closeSnackBar() {
 
     <v-dialog persistent :model-value="isAddOrder || isEditOrder" width="500">
         <v-card class="rounded-lg elevation-5">
-          <v-card-title class="headline mb-2">
-            {{ isAddOrder ? "Add Order" : isEditOrder ? "Edit Order" : "" }}
-          </v-card-title>
-          <v-card-title class="headline mb-2">
-            <v-btn variant="flat" color="teal" prepend-icon="mdi-plus" text @click="openAddCustomer()">Add
-              Customer</v-btn>
-          </v-card-title>
-          <v-card-text>
-            <v-select v-model="selectedPickUpCustomer" :items="customers" item-title="name" item-value="id"
-              label="Select PickUp Customer" return-object required>
-            </v-select>
-            <v-select v-model="selectedDropOffCustomer" :items="availableDropOffCustomers" item-title="name"
-              item-value="id" label="Select DropOff Customer" return-object required>
-            </v-select>
-            <v-text-field v-model="newOrder.requestedPickUpTime" label="Requested PickUp Time" required></v-text-field>
-            <v-select v-model="selectedCourier" :items="couriers" :item-title="formatCourierName" item-value="id"
-              label="Select Courier" return-object required>
-            </v-select>
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn text @click="isAddOrder ? closeAddOrder() : isEditOrder ? closeEditOrder() : false">Close</v-btn>
-            <v-btn variant="flat" color="teal" @click="isAddOrder ? addOrder() : isEditOrder ? updateOrder() : false">
-              {{ isAddOrder ? "Add Order" : isEditOrder ? "Update Order" : "" }}
-            </v-btn>
-          </v-card-actions>
+            <v-card-title class="headline mb-2">
+                {{ isAddOrder ? "Add Order" : isEditOrder ? "Edit Order" : "" }}
+            </v-card-title>
+            <v-card-title class="headline mb-2">
+                <v-btn variant="flat" color="teal" prepend-icon="mdi-plus" text @click="openAddCustomer()">Add
+                    Customer</v-btn>
+            </v-card-title>
+            <v-card-text>
+                <v-select v-model="selectedPickUpCustomer" :items="customers" item-title="name" item-value="id"
+                    label="Select PickUp Customer" return-object required>
+                </v-select>
+                <v-select v-model="selectedDropOffCustomer" :items="availableDropOffCustomers" item-title="name"
+                    item-value="id" label="Select DropOff Customer" return-object required>
+                </v-select>
+                <v-text-field v-model="newOrder.requestedPickUpTime" label="Requested PickUp Time" required></v-text-field>
+                <v-select v-model="selectedCourier" :items="couriers" :item-title="formatCourierName" item-value="id"
+                    label="Select Courier" return-object required>
+                </v-select>
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn text @click="isAddOrder ? closeAddOrder() : isEditOrder ? closeEditOrder() : false">Close</v-btn>
+                <v-btn variant="flat" color="teal" @click="isAddOrder ? addOrder() : isEditOrder ? updateOrder() : false">
+                    {{ isAddOrder ? "Add Order" : isEditOrder ? "Update Order" : "" }}
+                </v-btn>
+            </v-card-actions>
         </v-card>
-      </v-dialog>
+    </v-dialog>
 
-    <v-dialog persistent :model-value="isEditNode" width="500">
+    <v-dialog persistent :model-value="isAddEdge || isEditEdge" width="500">
         <v-card class="rounded-lg elevation-5">
             <v-card-title class="headline mb-2">
-                {{ isEditNode ? "Edit Place" : "" }}
+                {{ isAddEdge ? "Add Edge" : isEditEdge ? "Edit Edge" : "" }}
+            </v-card-title>
+            <v-card-text>
+                <v-select v-model="selectedFromNode" :items="nodes" item-title="name" item-value="id"
+                    label="Select From Node" return-object required>
+                </v-select>
+                <v-select v-model="selectedToNode" :items="availableToNodes" item-title="name" item-value="id"
+                    label="Select To Node" return-object required>
+                </v-select>
+                <v-text-field v-model="newEdge.cost" label="Cost" required></v-text-field>
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn text @click="isAddEdge ? closeAddEdge() : isEditEdge ? closeEditEdge() : false">Close</v-btn>
+                <v-btn variant="flat" color="teal" @click="isAddEdge ? addEdge() : isEditEdge ? updateEdge() : false">
+                    {{ isAddEdge ? "Add Edge" : isEditEdge ? "Update Edge" : "" }}
+                </v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
+
+    <v-dialog persistent :model-value="isAddNode || isEditNode" width="500">
+        <v-card class="rounded-lg elevation-5">
+            <v-card-title class="headline mb-2">
+                {{ isAddNode ? "Add Node" : isEditNode ? "Edit Node" : "" }}
             </v-card-title>
             <v-card-text>
                 <v-text-field v-model="newNode.name" label="Name" required></v-text-field>
             </v-card-text>
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn text @click="isEditNode ? closeEditNode() : false">Close</v-btn>
-                <v-btn variant="flat" color="teal" @click="isEditNode ? updateNode() : false">
-                    {{ isEditNode ? "Update Place" : "" }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
-
-    <v-dialog persistent :model-value="isEditEdge" width="500">
-        <v-card class="rounded-lg elevation-5">
-            <v-card-title class="headline mb-2">
-                {{ isEditEdge ? "Edit Path" : "" }}
-            </v-card-title>
-            <v-card-text>
-                <v-text-field v-model="newEdge.cost" label="Cost" required></v-text-field>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn text @click="isEditEdge ? closeEditEdge() : false">Close</v-btn>
-                <v-btn variant="flat" color="teal" @click="isEditEdge ? updateEdge() : false">
-                    {{ isEditEdge ? "Update Path" : "" }}
+                <v-btn text @click="isAddNode ? closeAddNode() : isEditNode ? closeEditNode() : false">Close</v-btn>
+                <v-btn variant="flat" color="teal" @click="isAddNode ? addNode() : isEditNode ? updateNode() : false">
+                    {{ isAddNode ? "Add Node" : isEditNode ? "Update Node" : "" }}
                 </v-btn>
             </v-card-actions>
         </v-card>
@@ -1442,7 +1814,6 @@ function closeSnackBar() {
             </v-card-actions>
         </v-card>
     </v-dialog>
-
 
     <v-snackbar v-model="snackbar.value" rounded="pill">
         {{ snackbar.text }}
