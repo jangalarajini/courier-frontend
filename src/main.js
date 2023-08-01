@@ -30,6 +30,7 @@ async function initializeApp() {
       email: "admin",
       password: "admin",
       role: "admin",
+      order: 0,
       companyId : 1,
     };
 
