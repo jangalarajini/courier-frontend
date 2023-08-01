@@ -16,6 +16,9 @@ export default {
   deletePath(pathId) {
     return apiClient.delete("path/" + pathId);
   },
+  deleteAllPaths(){
+    return apiClient.delete("path");
+  },
   getPathBySourceAndTarget(sourceId, targetId) {
     return apiClient.get(`path/source/${sourceId}/target/${targetId}`);
   },
