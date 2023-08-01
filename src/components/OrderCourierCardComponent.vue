@@ -12,13 +12,11 @@ const showDetails = ref(false);
 const customers = ref([]);
 const users = ref([]);
 const user = ref(null);
-
 const props = defineProps({
   order: {
     required: true,
   },
 });
-
 onMounted(async () => {
   await getCustomers();
   await getUsers();
@@ -62,13 +60,6 @@ async function getUsers() {
         {{ order.dropOffCustomer.name }}
       </v-chip>
     </v-col>
-    <v-col class="d-flex justify-end">
-      <v-btn variant="flat" color="teal" text @click="updateStartTime()">Started</v-btn>
-      <v-spacer></v-spacer>
-      <v-btn variant="flat" color="teal" :disabled="true" text @click="updatePickUpTime()">PickedUp</v-btn>
-      <v-spacer></v-spacer>
-      <v-btn variant="flat" color="teal" :disabled="true" text @click="updateDropOffTime()">DropOff</v-btn>
-    </v-col>
   </v-row>
 </v-card-title>
     <v-card-text class="body-1">
@@ -77,7 +68,9 @@ async function getUsers() {
     <v-expand-transition>
       <v-card-text class="pt-0" v-show="showDetails">
         <h3>Order Details</h3>
-        <v-card-text class="body-1">
+        <v-card-text class="body-1"> <strong>Bonus Amount:</strong> $ {{ order && order.bonus && order.bonus !== null ? order.bonus :
+          'null' }}</v-card-text>
+                  <v-card-text class="body-1">
           <strong>Path From Office To PickUpLocation:</strong>
           <template v-if="order?.officeToPickUpCustomerPath?.path">
             <div v-for="(address, index) in order.officeToPickUpCustomerPath.path.split(',')" :key="index">
