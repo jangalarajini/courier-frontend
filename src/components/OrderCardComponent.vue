@@ -62,9 +62,6 @@ async function getUsers() {
             {{ order.dropOffCustomer.name }}
           </v-chip>
         </v-col>
-        <v-col class="d-flex justify-end">
-          <v-icon size="small" icon="mdi-pencil" @click="navigateToEdit()"></v-icon>
-        </v-col>
       </v-row>
     </v-card-title>
     <v-card-text class="body-1">
@@ -78,9 +75,11 @@ async function getUsers() {
         <v-card-text class="body-1"> Requested PickUp Time: {{ order && order.requestedPickUpTime !== null ?
           order.requestedPickUpTime :
           'Not Requested' }}</v-card-text>
-<v-card-text class="body-1"> Total Distance: {{ order?.officeToPickUpCustomerPath?.cost + order?.pickUpCustomerToDropOffCustomerPath?.cost + order?.dropOffCustomerToOfficePath?.cost !== null ?
-  order?.officeToPickUpCustomerPath?.cost + order?.pickUpCustomerToDropOffCustomerPath?.cost + order?.dropOffCustomerToOfficePath?.cost :
-  '' }} miles</v-card-text>
+        <v-card-text class="body-1"> Total Distance: {{ order?.officeToPickUpCustomerPath?.cost +
+          order?.pickUpCustomerToDropOffCustomerPath?.cost + order?.dropOffCustomerToOfficePath?.cost !== null ?
+          order?.officeToPickUpCustomerPath?.cost + order?.pickUpCustomerToDropOffCustomerPath?.cost +
+          order?.dropOffCustomerToOfficePath?.cost :
+          '' }} miles</v-card-text>
 
         <v-card-text class="body-1"> Estimated Start Time: {{ order && order.estimatedStartTime !== null ?
           order.estimatedStartTime : 'null'
@@ -98,11 +97,13 @@ async function getUsers() {
           order.actualPickUpTime :
           'null' }}</v-card-text>
         <v-card-text class="body-1"> Actual DropOff Time: {{ order && order.actualStartTime !== null ?
-          order.actualStartTime :
+          order.actualDropOffTime :
+          'null' }}</v-card-text>
+        <v-card-text class="body-1"> Bonus Amount: {{ order && order.bonus !== null ?
+          order.bonus :
           'null' }}</v-card-text>
         <v-card-text class="body-1"> Courier: {{ order && order.courier && order.courier.firstName &&
           order.courier.lastName ? order.courier.firstName + ' ' + order.courier.lastName : 'null' }}</v-card-text>
-
       </v-card-text>
     </v-expand-transition>
   </v-card>
